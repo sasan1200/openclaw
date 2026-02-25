@@ -90,7 +90,10 @@ export function sanitizeChatSendMessageInput(
   return { ok: true, message: stripDisallowedChatControlChars(normalized) };
 }
 
-function truncateChatHistoryText(text: string): { text: string; truncated: boolean } {
+function truncateChatHistoryText(text: string): {
+  text: string;
+  truncated: boolean;
+} {
   if (text.length <= CHAT_HISTORY_TEXT_MAX_CHARS) {
     return { text, truncated: false };
   }
@@ -100,7 +103,10 @@ function truncateChatHistoryText(text: string): { text: string; truncated: boole
   };
 }
 
-function sanitizeChatHistoryContentBlock(block: unknown): { block: unknown; changed: boolean } {
+function sanitizeChatHistoryContentBlock(block: unknown): {
+  block: unknown;
+  changed: boolean;
+} {
   if (!block || typeof block !== "object") {
     return { block, changed: false };
   }
@@ -142,7 +148,10 @@ function sanitizeChatHistoryContentBlock(block: unknown): { block: unknown; chan
   return { block: changed ? entry : block, changed };
 }
 
-function sanitizeChatHistoryMessage(message: unknown): { message: unknown; changed: boolean } {
+function sanitizeChatHistoryMessage(message: unknown): {
+  message: unknown;
+  changed: boolean;
+} {
   if (!message || typeof message !== "object") {
     return { message, changed: false };
   }
@@ -297,8 +306,9 @@ function ensureTranscriptFile(params: { transcriptPath: string; sessionId: strin
   if (fs.existsSync(params.transcriptPath)) {
     return { ok: true };
   }
+  const dirToCreate = path.dirname(params.transcriptPath);
   try {
-    fs.mkdirSync(path.dirname(params.transcriptPath), { recursive: true });
+    fs.mkdirSync(dirToCreate, { recursive: true });
     const header = {
       type: "session",
       version: CURRENT_SESSION_VERSION,
@@ -312,7 +322,10 @@ function ensureTranscriptFile(params: { transcriptPath: string; sessionId: strin
     });
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -323,7 +336,9 @@ function transcriptHasIdempotencyKey(transcriptPath: string, idempotencyKey: str
       if (!line.trim()) {
         continue;
       }
-      const parsed = JSON.parse(line) as { message?: { idempotencyKey?: unknown } };
+      const parsed = JSON.parse(line) as {
+        message?: { idempotencyKey?: unknown };
+      };
       if (parsed?.message?.idempotencyKey === idempotencyKey) {
         return true;
       }
@@ -368,7 +383,10 @@ function appendAssistantTranscriptMessage(params: {
       sessionId: params.sessionId,
     });
     if (!ensured.ok) {
-      return { ok: false, error: ensured.error ?? "failed to create transcript file" };
+      return {
+        ok: false,
+        error: ensured.error ?? "failed to create transcript file",
+      };
     }
   }
 
@@ -564,7 +582,10 @@ export const chatHandlers: GatewayRequestHandlers = {
       maxSingleMessageBytes: perMessageHardCap,
     });
     const capped = capArrayByJsonBytes(replaced.messages, maxHistoryBytes).items;
-    const bounded = enforceChatHistoryFinalBudget({ messages: capped, maxBytes: maxHistoryBytes });
+    const bounded = enforceChatHistoryFinalBudget({
+      messages: capped,
+      maxBytes: maxHistoryBytes,
+    });
     const placeholderCount = replaced.replacedCount + bounded.placeholderCount;
     if (placeholderCount > 0) {
       chatHistoryPlaceholderEmitCount += placeholderCount;
@@ -578,7 +599,10 @@ export const chatHandlers: GatewayRequestHandlers = {
       if (configured) {
         thinkingLevel = configured;
       } else {
-        const sessionAgentId = resolveSessionAgentId({ sessionKey, config: cfg });
+        const sessionAgentId = resolveSessionAgentId({
+          sessionKey,
+          config: cfg,
+        });
         const { provider, model } = resolveSessionModelRef(cfg, entry, sessionAgentId);
         const catalog = await context.loadGatewayModelCatalog();
         thinkingLevel = resolveThinkingDefault({
@@ -1013,7 +1037,10 @@ export const chatHandlers: GatewayRequestHandlers = {
       sessionId,
       storePath,
       sessionFile: entry?.sessionFile,
-      agentId: resolveSessionAgentId({ sessionKey: rawSessionKey, config: cfg }),
+      agentId: resolveSessionAgentId({
+        sessionKey: rawSessionKey,
+        config: cfg,
+      }),
       createIfMissing: false,
     });
     if (!appended.ok || !appended.messageId || !appended.message) {

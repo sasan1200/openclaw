@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { getActiveEmbeddedRunCount } from "../agents/pi-embedded-runner/runs.js";
@@ -29,6 +31,7 @@ import { logAcceptedEnvOption } from "../infra/env.js";
 import { createExecApprovalForwarder } from "../infra/exec-approval-forwarder.js";
 import { onHeartbeatEvent } from "../infra/heartbeat-events.js";
 import { startHeartbeatRunner, type HeartbeatRunner } from "../infra/heartbeat-runner.js";
+import { resolveRequiredHomeDir } from "../infra/home-dir.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { ensureOpenClawCliOnPath } from "../infra/path-env.js";
 import { setGatewaySigusr1RestartPolicy, setPreRestartDeferralCheck } from "../infra/restart.js";
@@ -174,6 +177,20 @@ export async function startGatewayServer(
 
   // Ensure all default port derivations (browser/canvas) see the actual runtime port.
   process.env.OPENCLAW_GATEWAY_PORT = String(port);
+
+  // When using default state dir (~/.openclaw), ensure HOME exists so mkdir(stateDir) and
+  // mkdir(workspace) do not throw ENOENT (e.g. Docker with HOME=/home/node and no /home in image).
+  if (!process.env.OPENCLAW_STATE_DIR?.trim()) {
+    const home = resolveRequiredHomeDir(process.env, os.homedir);
+    if (home && home !== process.cwd()) {
+      try {
+        fs.mkdirSync(home, { recursive: true });
+      } catch {
+        // best-effort; later mkdir under state dir may still fail
+      }
+    }
+  }
+
   logAcceptedEnvOption({
     key: "OPENCLAW_RAW_STREAM",
     description: "raw stream logging enabled",
@@ -219,7 +236,10 @@ export async function startGatewayServer(
     );
   }
 
-  const autoEnable = applyPluginAutoEnable({ config: configSnapshot.config, env: process.env });
+  const autoEnable = applyPluginAutoEnable({
+    config: configSnapshot.config,
+    env: process.env,
+  });
   if (autoEnable.changes.length > 0) {
     try {
       await writeConfigFile(autoEnable.config);
@@ -257,7 +277,9 @@ export async function startGatewayServer(
   if (diagnosticsEnabled) {
     startDiagnosticHeartbeat();
   }
-  setGatewaySigusr1RestartPolicy({ allowExternal: isRestartEnabled(cfgAtStart) });
+  setGatewaySigusr1RestartPolicy({
+    allowExternal: isRestartEnabled(cfgAtStart),
+  });
   setPreRestartDeferralCheck(
     () => getTotalQueueSize() + getTotalPendingReplies() + getActiveEmbeddedRunCount(),
   );
@@ -652,8 +674,12 @@ export async function startGatewayServer(
         log,
         isNixMode,
         onUpdateAvailableChange: (updateAvailable) => {
-          const payload: GatewayUpdateAvailableEventPayload = { updateAvailable };
-          broadcast(GATEWAY_EVENT_UPDATE_AVAILABLE, payload, { dropIfSlow: true });
+          const payload: GatewayUpdateAvailableEventPayload = {
+            updateAvailable,
+          };
+          broadcast(GATEWAY_EVENT_UPDATE_AVAILABLE, payload, {
+            dropIfSlow: true,
+          });
         },
       });
   const tailscaleCleanup = minimalTestGateway

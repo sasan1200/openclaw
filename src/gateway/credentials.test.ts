@@ -66,7 +66,7 @@ describe("resolveGatewayCredentialsFromConfig", () => {
     });
   });
 
-  it("returns empty credentials when url override is used without explicit auth", () => {
+  it("falls back to config/env when url override is used without explicit auth (e.g. Docker CLI)", () => {
     const resolved = resolveGatewayCredentialsFor(
       {
         auth: DEFAULT_GATEWAY_AUTH,
@@ -75,7 +75,10 @@ describe("resolveGatewayCredentialsFromConfig", () => {
         urlOverride: "wss://example.com",
       },
     );
-    expect(resolved).toEqual({});
+    expect(resolved).toEqual({
+      token: "env-token",
+      password: "env-password",
+    });
   });
 
   it("uses local-mode environment values before local config", () => {

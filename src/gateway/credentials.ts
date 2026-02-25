@@ -110,9 +110,7 @@ export function resolveGatewayCredentialsFromConfig(params: {
   if (explicitToken || explicitPassword) {
     return { token: explicitToken, password: explicitPassword };
   }
-  if (trimToUndefined(params.urlOverride)) {
-    return {};
-  }
+  // When urlOverride is set but no explicit auth, still resolve from config/env (e.g. Docker CLI with OPENCLAW_GATEWAY_URL).
 
   const mode: GatewayCredentialMode =
     params.modeOverride ?? (params.cfg.gateway?.mode === "remote" ? "remote" : "local");

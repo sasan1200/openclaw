@@ -1,4 +1,5 @@
 import { readConfigFileSnapshot, resolveGatewayPort } from "../config/config.js";
+import { normalizeControlUiBasePath } from "../gateway/control-ui-shared.js";
 import { copyToClipboard } from "../infra/clipboard.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
@@ -23,16 +24,23 @@ export async function dashboardCommand(
   const bind = cfg.gateway?.bind ?? "loopback";
   const basePath = cfg.gateway?.controlUi?.basePath;
   const customBindHost = cfg.gateway?.customBindHost;
+  const preferredUrl = cfg.gateway?.controlUi?.preferredUrl?.trim();
   const token = cfg.gateway?.auth?.token ?? process.env.OPENCLAW_GATEWAY_TOKEN ?? "";
 
-  // LAN URLs fail secure-context checks in browsers.
-  // Coerce only lan->loopback and preserve other bind modes.
-  const links = resolveControlUiLinks({
-    port,
-    bind: bind === "lan" ? "loopback" : bind,
-    customBindHost,
-    basePath,
-  });
+  // Use preferred URL when set (e.g. Tailscale HTTPS for Docker setups).
+  const links = preferredUrl
+    ? (() => {
+        const base = preferredUrl.replace(/\/+$/, "");
+        const path = normalizeControlUiBasePath(basePath);
+        const uiPath = path ? `/${path}/` : "/";
+        return { httpUrl: `${base}${uiPath}`, wsUrl: "" };
+      })()
+    : resolveControlUiLinks({
+        port,
+        bind: bind === "lan" ? "loopback" : bind,
+        customBindHost,
+        basePath,
+      });
   // Prefer URL fragment to avoid leaking auth tokens via query params.
   const dashboardUrl = token
     ? `${links.httpUrl}#token=${encodeURIComponent(token)}`

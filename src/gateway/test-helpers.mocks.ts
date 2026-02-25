@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Mock, vi } from "vitest";
+import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import type { MsgContext } from "../auto-reply/templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../auto-reply/types.js";
 import type { ChannelPlugin, ChannelOutboundAdapter } from "../channels/plugins/types.js";
@@ -121,7 +122,10 @@ const createStubPluginRegistry = (): PluginRegistry => ({
     {
       pluginId: "msteams",
       source: "test",
-      plugin: createStubChannelPlugin({ id: "msteams", label: "Microsoft Teams" }),
+      plugin: createStubChannelPlugin({
+        id: "msteams",
+        label: "Microsoft Teams",
+      }),
     },
     {
       pluginId: "matrix",
@@ -136,12 +140,18 @@ const createStubPluginRegistry = (): PluginRegistry => ({
     {
       pluginId: "zalouser",
       source: "test",
-      plugin: createStubChannelPlugin({ id: "zalouser", label: "Zalo Personal" }),
+      plugin: createStubChannelPlugin({
+        id: "zalouser",
+        label: "Zalo Personal",
+      }),
     },
     {
       pluginId: "bluebubbles",
       source: "test",
-      plugin: createStubChannelPlugin({ id: "bluebubbles", label: "BlueBubbles" }),
+      plugin: createStubChannelPlugin({
+        id: "bluebubbles",
+        label: "BlueBubbles",
+      }),
     },
   ],
   providers: [],
@@ -413,7 +423,7 @@ vi.mock("../config/config.js", async () => {
           ? (fileAgents.defaults as Record<string, unknown>)
           : {};
       const defaults = {
-        model: { primary: "anthropic/claude-opus-4-6" },
+        model: { primary: `${DEFAULT_PROVIDER}/${DEFAULT_MODEL}` },
         workspace: path.join(os.tmpdir(), "openclaw-gateway-test"),
         ...fileDefaults,
         ...testState.agentConfig,
@@ -489,7 +499,9 @@ vi.mock("../config/config.js", async () => {
         fileConfig.canvasHost &&
         typeof fileConfig.canvasHost === "object" &&
         !Array.isArray(fileConfig.canvasHost)
-          ? ({ ...(fileConfig.canvasHost as Record<string, unknown>) } as Record<string, unknown>)
+          ? ({
+              ...(fileConfig.canvasHost as Record<string, unknown>),
+            } as Record<string, unknown>)
           : {};
       if (typeof testState.canvasHostPort === "number") {
         fileCanvasHost.port = testState.canvasHostPort;

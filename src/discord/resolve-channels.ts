@@ -148,6 +148,24 @@ export async function resolveDiscordChannelAllowlist(params: {
   }
   const fetcher = params.fetcher ?? fetch;
   const guilds = await listGuilds(token, fetcher);
+  // #region agent log
+  fetch("http://127.0.0.1:7275/ingest/fb78f46b-94bc-40ef-93b8-80066baaa7f3", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5ae62d" },
+    body: JSON.stringify({
+      sessionId: "5ae62d",
+      location: "resolve-channels.ts:listGuilds",
+      message: "listGuilds result",
+      data: {
+        guildCount: guilds.length,
+        guildSlugs: guilds.map((g) => g.slug),
+        guildNames: guilds.map((g) => g.name),
+      },
+      timestamp: Date.now(),
+      hypothesisId: "H1_H2",
+    }),
+  }).catch(() => {});
+  // #endregion
   const channelsByGuild = new Map<string, Promise<DiscordChannelSummary[]>>();
   const getChannels = (guildId: string) => {
     const existing = channelsByGuild.get(guildId);
@@ -219,7 +237,42 @@ export async function resolveDiscordChannelAllowlist(params: {
             ? resolveGuildByName(guilds, parsed.guild)
             : undefined;
       const channelQuery = parsed.channel?.trim();
+      // #region agent log
+      fetch("http://127.0.0.1:7275/ingest/fb78f46b-94bc-40ef-93b8-80066baaa7f3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5ae62d" },
+        body: JSON.stringify({
+          sessionId: "5ae62d",
+          location: "resolve-channels.ts:guild+channel",
+          message: "guild+channel resolution step",
+          data: {
+            input,
+            parsedGuild: parsed.guild,
+            parsedGuildId: parsed.guildId,
+            channelQuery,
+            guildFound: !!guild,
+            matchedGuildSlug: guild?.slug,
+          },
+          timestamp: Date.now(),
+          hypothesisId: "H1_H5",
+        }),
+      }).catch(() => {});
+      // #endregion
       if (!guild || !channelQuery) {
+        // #region agent log
+        fetch("http://127.0.0.1:7275/ingest/fb78f46b-94bc-40ef-93b8-80066baaa7f3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5ae62d" },
+          body: JSON.stringify({
+            sessionId: "5ae62d",
+            location: "resolve-channels.ts:unresolvedNoGuild",
+            message: "guild not found or no channel query",
+            data: { input, guildFound: !!guild, channelQuery: channelQuery ?? null },
+            timestamp: Date.now(),
+            hypothesisId: "H1_H2_H5",
+          }),
+        }).catch(() => {});
+        // #endregion
         results.push({
           input,
           resolved: false,
@@ -230,6 +283,27 @@ export async function resolveDiscordChannelAllowlist(params: {
         continue;
       }
       const channels = await getChannels(guild.id);
+      // #region agent log
+      const channelSlugs = channels.map((c) => normalizeDiscordSlug(c.name));
+      fetch("http://127.0.0.1:7275/ingest/fb78f46b-94bc-40ef-93b8-80066baaa7f3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5ae62d" },
+        body: JSON.stringify({
+          sessionId: "5ae62d",
+          location: "resolve-channels.ts:channelsInGuild",
+          message: "channels in guild",
+          data: {
+            input,
+            guildId: guild.id,
+            channelCount: channels.length,
+            channelSlugs,
+            querySlug: normalizeDiscordSlug(channelQuery),
+          },
+          timestamp: Date.now(),
+          hypothesisId: "H3_H4",
+        }),
+      }).catch(() => {});
+      // #endregion
       const matches = channels.filter(
         (channel) => normalizeDiscordSlug(channel.name) === normalizeDiscordSlug(channelQuery),
       );
@@ -245,6 +319,20 @@ export async function resolveDiscordChannelAllowlist(params: {
           archived: match.archived,
         });
       } else {
+        // #region agent log
+        fetch("http://127.0.0.1:7275/ingest/fb78f46b-94bc-40ef-93b8-80066baaa7f3", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5ae62d" },
+          body: JSON.stringify({
+            sessionId: "5ae62d",
+            location: "resolve-channels.ts:unresolvedChannel",
+            message: "channel not found in guild",
+            data: { input, guildName: guild.name, channelQuery: parsed.channel },
+            timestamp: Date.now(),
+            hypothesisId: "H3",
+          }),
+        }).catch(() => {});
+        // #endregion
         results.push({
           input,
           resolved: false,

@@ -41,12 +41,11 @@ Codex cloud requires ChatGPT sign-in, while the Codex CLI supports ChatGPT or AP
 ### CLI setup (Codex OAuth)
 
 ```bash
-# Run Codex OAuth in the wizard
+# Run the onboarding wizard and choose Codex OAuth (opens browser for ChatGPT sign-in)
 openclaw onboard --auth-choice openai-codex
-
-# Or run OAuth directly
-openclaw models auth login --provider openai-codex
 ```
+
+Note: `openclaw models auth login --provider openai-codex` only works when an openai-codex provider plugin is installed. Use `openclaw onboard --auth-choice openai-codex` to add Codex OAuth without a plugin.
 
 ### Config snippet (Codex subscription)
 
@@ -55,6 +54,18 @@ openclaw models auth login --provider openai-codex
   agents: { defaults: { model: { primary: "openai-codex/gpt-5.3-codex" } } },
 }
 ```
+
+**If you see “No API key found for provider openai” but you use OAuth:** your default model is set to `openai/*` (API key). OAuth is only used for **`openai-codex/*`**. Set `agents.defaults.model.primary` to `openai-codex/gpt-5.3-codex` (or another `openai-codex/…` model) so the agent uses your Codex OAuth instead of asking for an API key.
+
+## Rate limits (“rate limit reached” with unlimited plan)
+
+OpenAI applies **requests per minute (RPM)** and **tokens per minute (TPM)** limits even on high-tier or “unlimited” plans. If you see “API rate limit reached” or “rate limit reached”:
+
+1. **Add multiple API keys** — OpenClaw rotates across keys on rate limit. Add keys in the same provider (e.g. `openai`) so rotation can try the next key when one is throttled.
+2. **Configure model fallbacks** — Use [model failover](/concepts/model-failover) so another model (or provider) is tried when the primary is rate limited.
+3. **Wait and retry** — Limits reset every minute; retrying after a short wait often works.
+
+The message comes from the **OpenAI API** (HTTP 429), not from the gateway’s auth rate limiter.
 
 ## Notes
 

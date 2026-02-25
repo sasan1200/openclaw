@@ -177,7 +177,9 @@ async function deployDiscordCommands(params: {
   if (!params.enabled) {
     return;
   }
-  const runWithRetry = createDiscordRetryRunner({ verbose: shouldLogVerbose() });
+  const runWithRetry = createDiscordRetryRunner({
+    verbose: shouldLogVerbose(),
+  });
   try {
     await runWithRetry(() => params.client.handleDeployRequest(), "command deploy");
   } catch (err) {
@@ -337,12 +339,18 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
       ? dedupeSkillCommandsForDiscord(listSkillCommandsForAgents({ cfg }))
       : [];
   let commandSpecs = nativeEnabled
-    ? listNativeCommandSpecsForConfig(cfg, { skillCommands, provider: "discord" })
+    ? listNativeCommandSpecsForConfig(cfg, {
+        skillCommands,
+        provider: "discord",
+      })
     : [];
   const initialCommandCount = commandSpecs.length;
   if (nativeEnabled && nativeSkillsEnabled && commandSpecs.length > maxDiscordCommands) {
     skillCommands = [];
-    commandSpecs = listNativeCommandSpecsForConfig(cfg, { skillCommands: [], provider: "discord" });
+    commandSpecs = listNativeCommandSpecsForConfig(cfg, {
+      skillCommands: [],
+      provider: "discord",
+    });
     runtime.log?.(
       warn(
         `discord: ${initialCommandCount} commands exceeds limit; removing per-skill commands and keeping /skill.`,
@@ -356,7 +364,9 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
       ),
     );
   }
-  const voiceManagerRef: { current: DiscordVoiceManager | null } = { current: null };
+  const voiceManagerRef: { current: DiscordVoiceManager | null } = {
+    current: null,
+  };
   const threadBindings = threadBindingsEnabled
     ? createThreadBindingManager({
         accountId: account.accountId,

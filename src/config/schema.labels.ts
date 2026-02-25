@@ -236,6 +236,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "tools.web.fetch.firecrawl.maxAgeMs": "Firecrawl Cache Max Age (ms)",
   "tools.web.fetch.firecrawl.timeoutSeconds": "Firecrawl Timeout (sec)",
   "gateway.controlUi.basePath": "Control UI Base Path",
+  "gateway.controlUi.preferredUrl": "Control UI Preferred URL",
   "gateway.controlUi.root": "Control UI Assets Root",
   "gateway.controlUi.allowedOrigins": "Control UI Allowed Origins",
   "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback":

@@ -6,6 +6,11 @@
 **/.tmp
 .DS_Store
 **/.DS_Store
+
+# Never bake secrets into the image; pass at runtime via env or mounted config
+.env
+.env.*
+!.env.example
 *.png
 *.jpg
 *.jpeg

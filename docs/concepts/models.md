@@ -27,6 +27,7 @@ Related:
 - `agents.defaults.models` is the allowlist/catalog of models OpenClaw can use (plus aliases).
 - `agents.defaults.imageModel` is used **only when** the primary model can’t accept images.
 - Per-agent defaults can override `agents.defaults.model` via `agents.list[].model` plus bindings (see [/concepts/multi-agent](/concepts/multi-agent)).
+- To use different models for planning vs coding vs docs/simple tasks, see [Model routing by task](/concepts/model-routing-by-task).
 
 ## Quick model picks (anecdotal)
 

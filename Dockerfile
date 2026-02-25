@@ -51,6 +51,11 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
+# Ensure /home/node exists for docker-compose HOME/OPENCLAW_STATE_DIR.
+# node:22-bookworm may not create it when running as user 1000:1000 with read_only.
+USER root
+RUN mkdir -p /home/node && chown node:node /home/node
+
 # Security hardening: Run as non-root user
 # The node:22-bookworm image includes a 'node' user (uid 1000)
 # This reduces the attack surface by preventing container escape via root privileges

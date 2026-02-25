@@ -524,6 +524,21 @@ Use `bindings[].match.roles` to route Discord guild members to different agents 
     Prefer numeric IDs in OpenClaw config for reliable audits and probes.
 
   </Accordion>
+
+  <Accordion title="Private application and default authorization link">
+    If you see **"Private application cannot have a default authorization link"** in the Developer Portal, Discord is blocking it because private applications cannot have an OAuth2 Default Authorization Link set.
+
+    **Fix (Developer Portal only):**
+
+    1. Open **OAuth2** in the sidebar (the main OAuth2 section, not URL Generator).
+    2. Find **Default Authorization Link** and set it to **None** (or clear any "In-App Authorisation" / default link).
+    3. Save if there is a Save button.
+
+    OpenClaw does not use the Default Authorization Link. It uses your **Bot Token** (from Bot → Reset Token) and the **OAuth2 URL Generator** to create invite links manually. Clearing the default link does not affect OpenClaw.
+
+    If you want the bot to be **private** (not discoverable in the app directory), turn off **Public Bot** under **Bot** — but you must set Default Authorization Link to **None** first, or Discord will show the same error.
+
+  </Accordion>
 </AccordionGroup>
 
 ## Native commands and command auth

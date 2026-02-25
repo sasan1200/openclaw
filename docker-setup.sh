@@ -110,6 +110,7 @@ fi
 export OPENCLAW_GATEWAY_TOKEN
 
 COMPOSE_FILES=("$COMPOSE_FILE")
+[[ -f "$ROOT_DIR/docker-compose.yml" ]] && COMPOSE_FILES+=("$ROOT_DIR/docker-compose.yml")
 COMPOSE_ARGS=()
 
 write_extra_compose() {
@@ -253,6 +254,13 @@ docker build \
   -t "$IMAGE_NAME" \
   -f "$ROOT_DIR/Dockerfile" \
   "$ROOT_DIR"
+
+# If existing config has unknown/deprecated keys, repair it so onboarding can succeed
+if [[ -f "${OPENCLAW_CONFIG_DIR}/openclaw.json" ]]; then
+  echo ""
+  echo "==> Repairing existing config (doctor --fix)"
+  docker compose "${COMPOSE_ARGS[@]}" run --rm openclaw-cli doctor --fix --yes || true
+fi
 
 echo ""
 echo "==> Onboarding (interactive)"

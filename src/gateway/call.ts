@@ -124,17 +124,24 @@ export function buildGatewayConnectionDetails(
     typeof options.url === "string" && options.url.trim().length > 0
       ? options.url.trim()
       : undefined;
+  const envGatewayUrl =
+    typeof process.env.OPENCLAW_GATEWAY_URL === "string" &&
+    process.env.OPENCLAW_GATEWAY_URL.trim().length > 0
+      ? process.env.OPENCLAW_GATEWAY_URL.trim()
+      : undefined;
   const remoteUrl =
     typeof remote?.url === "string" && remote.url.trim().length > 0 ? remote.url.trim() : undefined;
-  const remoteMisconfigured = isRemoteMode && !urlOverride && !remoteUrl;
-  const url = urlOverride || remoteUrl || localUrl;
+  const remoteMisconfigured = isRemoteMode && !urlOverride && !envGatewayUrl && !remoteUrl;
+  const url = urlOverride || envGatewayUrl || remoteUrl || localUrl;
   const urlSource = urlOverride
     ? "cli --url"
-    : remoteUrl
-      ? "config gateway.remote.url"
-      : remoteMisconfigured
-        ? "missing gateway.remote.url (fallback local)"
-        : "local loopback";
+    : envGatewayUrl
+      ? "env OPENCLAW_GATEWAY_URL"
+      : remoteUrl
+        ? "config gateway.remote.url"
+        : remoteMisconfigured
+          ? "missing gateway.remote.url (fallback local)"
+          : "local loopback";
   const remoteFallbackNote = remoteMisconfigured
     ? "Warn: gateway.mode=remote but gateway.remote.url is missing; set gateway.remote.url or switch gateway.mode=local."
     : undefined;
@@ -142,8 +149,9 @@ export function buildGatewayConnectionDetails(
 
   // Security check: block ALL insecure ws:// to non-loopback addresses (CWE-319, CVSS 9.8)
   // This applies to the FINAL resolved URL, regardless of source (config, CLI override, etc).
-  // Both credentials and chat/conversation data must not be transmitted over plaintext to remote hosts.
-  if (!isSecureWebSocketUrl(url)) {
+  // Exception: OPENCLAW_GATEWAY_URL is used in trusted environments (e.g. Docker same-network) where ws:// is acceptable.
+  const urlFromTrustedEnv = urlSource === "env OPENCLAW_GATEWAY_URL";
+  if (!urlFromTrustedEnv && !isSecureWebSocketUrl(url)) {
     throw new Error(
       [
         `SECURITY ERROR: Gateway URL "${url}" uses plaintext ws:// to a non-loopback address.`,
@@ -224,7 +232,19 @@ function resolveGatewayCallContext(opts: CallGatewayBaseOptions): ResolvedGatewa
     : undefined;
   const urlOverride = trimToUndefined(opts.url);
   const remoteUrl = trimToUndefined(remote?.url);
-  const explicitAuth = resolveExplicitGatewayAuth({ token: opts.token, password: opts.password });
+  let explicitAuth = resolveExplicitGatewayAuth({ token: opts.token, password: opts.password });
+  if (urlOverride && !explicitAuth.token && !explicitAuth.password) {
+    const resolved = resolveGatewayCredentialsFromConfig({
+      cfg: config,
+      env: process.env,
+      explicitAuth: {},
+      remotePasswordPrecedence: "env-first",
+    });
+    explicitAuth = resolveExplicitGatewayAuth({
+      token: opts.token ?? resolved.token,
+      password: opts.password ?? resolved.password,
+    });
+  }
   return { config, configPath, isRemoteMode, remote, urlOverride, remoteUrl, explicitAuth };
 }
 

@@ -293,6 +293,22 @@ describe("buildGatewayConnectionDetails", () => {
     expect(details.remoteFallbackNote).toBeUndefined();
   });
 
+  it("uses OPENCLAW_GATEWAY_URL when set (e.g. Docker CLI container)", () => {
+    setLocalLoopbackGatewayConfig(18789);
+    const envSnapshot = captureEnv(["OPENCLAW_GATEWAY_URL"]);
+    process.env.OPENCLAW_GATEWAY_URL = "ws://openclaw-gateway:18789";
+
+    try {
+      const details = buildGatewayConnectionDetails();
+
+      expect(details.url).toBe("ws://openclaw-gateway:18789");
+      expect(details.urlSource).toBe("env OPENCLAW_GATEWAY_URL");
+      expect(details.message).toContain("Gateway target: ws://openclaw-gateway:18789");
+    } finally {
+      envSnapshot.restore();
+    }
+  });
+
   it("throws for insecure ws:// remote URLs (CWE-319)", () => {
     loadConfig.mockReturnValue({
       gateway: {
@@ -380,7 +396,10 @@ describe("callGateway error details", () => {
 
     vi.useFakeTimers();
     let errMessage = "";
-    const promise = callGateway({ method: "health", timeoutMs: 2_592_010_000 }).catch((caught) => {
+    const promise = callGateway({
+      method: "health",
+      timeoutMs: 2_592_010_000,
+    }).catch((caught) => {
       errMessage = caught instanceof Error ? caught.message : String(caught);
     });
 
@@ -419,7 +438,7 @@ describe("callGateway url override auth requirements", () => {
     envSnapshot.restore();
   });
 
-  it("throws when url override is set without explicit credentials", async () => {
+  it("uses env/config credentials when url override is set without explicit credentials (e.g. Docker CLI)", async () => {
     process.env.OPENCLAW_GATEWAY_TOKEN = "env-token";
     process.env.OPENCLAW_GATEWAY_PASSWORD = "env-password";
     loadConfig.mockReturnValue({
@@ -428,10 +447,14 @@ describe("callGateway url override auth requirements", () => {
         auth: { token: "local-token", password: "local-password" },
       },
     });
+    setGatewayNetworkDefaults();
 
-    await expect(
-      callGateway({ method: "health", url: "wss://override.example/ws" }),
-    ).rejects.toThrow("explicit credentials");
+    const result = await callGateway({
+      method: "health",
+      url: "wss://override.example/ws",
+    });
+    expect(result).toEqual({ ok: true });
+    expect(lastClientOptions?.token).toBe("env-token");
   });
 });
 
