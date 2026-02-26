@@ -103,6 +103,30 @@ describe("resolveSandboxFsPathWithMounts", () => {
     ).toThrow(/Path escapes sandbox root/);
   });
 
+  it("falls back to mapping container paths when mount lookup misses (issue #9560)", () => {
+    const sandbox = createSandbox();
+    const workspaceDir = path.resolve(sandbox.workspaceDir);
+    // Mount with different container path so /workspace/... does not match
+    const mounts = [
+      {
+        hostRoot: workspaceDir,
+        containerRoot: "/app",
+        writable: true,
+        source: "workspace" as const,
+      },
+    ];
+    const resolved = resolveSandboxFsPathWithMounts({
+      filePath: "/workspace/test.svg",
+      cwd: workspaceDir,
+      defaultWorkspaceRoot: workspaceDir,
+      defaultContainerRoot: "/workspace",
+      mounts,
+    });
+    expect(resolved.hostPath).toBe(path.join(workspaceDir, "test.svg"));
+    expect(resolved.containerPath).toBe("/app/test.svg");
+    expect(resolved.writable).toBe(true);
+  });
+
   it("prefers custom bind mounts over default workspace mount at /workspace", () => {
     const sandbox = createSandbox({
       docker: {

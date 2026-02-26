@@ -127,6 +127,32 @@ export function resolveSandboxFsPathWithMounts(params: {
         writable: containerMount.writable,
       };
     }
+    // Fallback: map container-internal paths (e.g. /workspace/...) to host before
+    // host lookup, preventing false "Path escapes sandbox root" when the agent
+    // uses container paths that mount lookup missed (edge cases, path normalization).
+    const mappedHost = mapContainerPathToHost(inputPosix, {
+      defaultContainerRoot: params.defaultContainerRoot,
+      defaultWorkspaceRoot: params.defaultWorkspaceRoot,
+    });
+    if (mappedHost) {
+      const hostMount = findMountByHostPath(mountsByHost, mappedHost);
+      if (hostMount) {
+        const relHost = path.relative(hostMount.hostRoot, mappedHost);
+        const relPosix = relHost ? relHost.split(path.sep).join(path.posix.sep) : "";
+        const containerPath = relPosix
+          ? path.posix.join(hostMount.containerRoot, relPosix)
+          : hostMount.containerRoot;
+        return {
+          hostPath: mappedHost,
+          containerPath,
+          relativePath: toDisplayRelative({
+            containerPath,
+            defaultContainerRoot: params.defaultContainerRoot,
+          }),
+          writable: hostMount.writable,
+        };
+      }
+    }
   }
 
   const hostResolved = resolveSandboxInputPath(input, params.cwd);
@@ -260,4 +286,31 @@ function normalizeContainerPath(value: string): string {
 
 function normalizePosixInput(value: string): string {
   return value.replace(/\\/g, "/").trim();
+}
+
+/**
+ * Maps container-internal paths (e.g. /workspace/foo) to the host workspace root.
+ * Returns null if the path is not under the container workdir.
+ */
+function mapContainerPathToHost(
+  containerPath: string,
+  params: { defaultContainerRoot: string; defaultWorkspaceRoot: string },
+): string | null {
+  const root = normalizeContainerPath(params.defaultContainerRoot);
+  if (!root || !root.startsWith("/")) {
+    return null;
+  }
+  const normalized = path.posix.normalize(containerPath);
+  if (normalized === root) {
+    return path.resolve(params.defaultWorkspaceRoot);
+  }
+  const prefix = `${root}/`;
+  if (!normalized.startsWith(prefix)) {
+    return null;
+  }
+  const rel = normalized.slice(prefix.length);
+  if (!rel) {
+    return path.resolve(params.defaultWorkspaceRoot);
+  }
+  return path.resolve(params.defaultWorkspaceRoot, ...rel.split("/").filter(Boolean));
 }
