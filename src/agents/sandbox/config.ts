@@ -24,6 +24,26 @@ import type {
   SandboxScope,
 } from "./types.js";
 
+export const DANGEROUS_SANDBOX_DOCKER_BOOLEAN_KEYS = [
+  "dangerouslyAllowReservedContainerTargets",
+  "dangerouslyAllowExternalBindSources",
+  "dangerouslyAllowContainerNamespaceJoin",
+] as const;
+
+type DangerousSandboxDockerBooleanKey = (typeof DANGEROUS_SANDBOX_DOCKER_BOOLEAN_KEYS)[number];
+type DangerousSandboxDockerBooleans = Pick<SandboxDockerConfig, DangerousSandboxDockerBooleanKey>;
+
+function resolveDangerousSandboxDockerBooleans(
+  agentDocker?: Partial<SandboxDockerConfig>,
+  globalDocker?: Partial<SandboxDockerConfig>,
+): DangerousSandboxDockerBooleans {
+  const resolved = {} as DangerousSandboxDockerBooleans;
+  for (const key of DANGEROUS_SANDBOX_DOCKER_BOOLEAN_KEYS) {
+    resolved[key] = agentDocker?.[key] ?? globalDocker?.[key];
+  }
+  return resolved;
+}
+
 export function resolveSandboxBrowserDockerCreateConfig(params: {
   docker: SandboxDockerConfig;
   browser: SandboxBrowserConfig;
@@ -97,6 +117,7 @@ export function resolveSandboxDockerConfig(params: {
     extraHosts: agentDocker?.extraHosts ?? globalDocker?.extraHosts,
     binds: binds.length ? binds : undefined,
     volumes: volumes.length ? volumes : undefined,
+    ...resolveDangerousSandboxDockerBooleans(agentDocker, globalDocker),
   };
 }
 
