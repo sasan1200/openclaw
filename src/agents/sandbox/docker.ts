@@ -335,6 +335,7 @@ export function buildSandboxCreateArgs(params: {
   bindSourceRoots?: string[];
   allowSourcesOutsideAllowedRoots?: boolean;
   allowReservedContainerTargets?: boolean;
+  allowContainerNamespaceJoin?: boolean;
 }) {
   // Runtime security validation: blocks dangerous bind mounts, network modes, and profiles.
   const bindSpecsFromVolumes = (params.cfg.volumes ?? [])
@@ -351,6 +352,9 @@ export function buildSandboxCreateArgs(params: {
     allowReservedContainerTargets:
       params.allowReservedContainerTargets ??
       params.cfg.dangerouslyAllowReservedContainerTargets === true,
+    dangerouslyAllowContainerNamespaceJoin:
+      params.allowContainerNamespaceJoin ??
+      params.cfg.dangerouslyAllowContainerNamespaceJoin === true,
   });
 
   const createdAtMs = params.createdAtMs ?? Date.now();
