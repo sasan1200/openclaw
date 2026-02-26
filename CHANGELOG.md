@@ -31,6 +31,7 @@ Docs: https://docs.openclaw.ai
 - CLI/Doctor: correct stale recovery hints to use valid commands (`openclaw gateway status --deep` and `openclaw configure --section model`). (#24485) Thanks @chilu18.
 - Security/Sandbox: canonicalize bind-mount source paths via existing-ancestor realpath so symlink-parent + non-existent-leaf paths cannot bypass allowed-source-roots or blocked-path checks. Thanks @tdjackey.
 - Doctor/Plugins: auto-enable now resolves third-party channel plugins by manifest plugin id (not channel id), preventing invalid `plugins.entries.<channelId>` writes when ids differ. (#25275) Thanks @zerone0x.
+- Sandbox/Path resolution: add fallback to map container-internal paths (`/workspace/...`) to host when mount lookup misses, preventing false "Path escapes sandbox root" in edge cases. (#9560)
 
 ## 2026.2.23
 
