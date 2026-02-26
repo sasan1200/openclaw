@@ -171,10 +171,19 @@ libraries), set `OPENCLAW_DOCKER_APT_PACKAGES` before running `docker-setup.sh`.
 This installs the packages during the image build, so they persist even if the
 container is deleted.
 
+**Recommended packages by use case:**
+
+| Use case                      | Suggested value                                                                                                                                                                                                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Media / encoding, build tools | `ffmpeg build-essential`                                                                                                                                                                                                                                                                     |
+| CLI helpers (git, HTTP, JSON) | `git curl jq`                                                                                                                                                                                                                                                                                |
+| Both                          | `ffmpeg build-essential git curl jq`                                                                                                                                                                                                                                                         |
+| Playwright with system deps   | Add Playwright’s dependencies (e.g. from [Playwright docs](https://playwright.dev/docs/intro#system-requirements)); or run `playwright install-deps` in a throwaway container and copy the apt list. Prefer baking them in via `OPENCLAW_DOCKER_APT_PACKAGES` over `--with-deps` at runtime. |
+
 Example:
 
 ```bash
-export OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg build-essential"
+export OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg build-essential git curl jq"
 ./docker-setup.sh
 ```
 
@@ -238,6 +247,22 @@ sudo chown -R 1000:1000 /path/to/openclaw-config /path/to/openclaw-workspace
 ```
 
 If you choose to run as root for convenience, you accept the security tradeoff.
+
+### spawn docker EACCES or ENOENT (host gateway + sandbox)
+
+If the **gateway** (running on the host, not in Docker) fails with `spawn docker EACCES` or `spawn docker ENOENT`, the process cannot run the `docker` binary:
+
+- **EACCES (permission denied):** The user or process does not have permission to execute `docker`. Common when the gateway runs under the macOS app or launchd with a restricted environment.
+- **ENOENT (not found):** `docker` is not in the process `PATH` (e.g. Docker Desktop’s symlinks are only in your login shell’s PATH).
+
+**Fixes:**
+
+1. **Run the gateway from a terminal** so it inherits your shell’s PATH and permissions:  
+   `openclaw gateway` (or `openclaw logs --follow` to tail after starting).
+2. **macOS app:** Ensure Docker Desktop is running. If the app still can’t run Docker, run the gateway via CLI instead (e.g. `openclaw gateway` in Terminal) and keep using the app for the UI.
+3. **launchd / systemd:** Ensure the service’s environment includes the path to `docker` (e.g. set `PATH` in the service file or source the same profile as your shell).
+
+See also: [FAQ — spawn docker EACCES](/help/faq#agent-fails-with-spawn-docker-eacces-or-enoent).
 
 ### Faster rebuilds (recommended)
 

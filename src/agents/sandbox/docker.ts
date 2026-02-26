@@ -65,6 +65,29 @@ export function execDockerRaw(
       if (signal) {
         signal.removeEventListener("abort", handleAbort);
       }
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EACCES") {
+        const hint = new Error(
+          "Cannot run docker: permission denied. Ensure Docker is installed, in PATH, and the process has permission to execute it. " +
+            "If using the macOS app or launchd, run the gateway from a terminal (e.g. openclaw gateway) or ensure Docker Desktop is running and the app has Full Disk Access / the same environment as your shell. " +
+            "See: docs/install/docker.md and docs/help/faq.md (spawn docker EACCES).",
+        );
+        (hint as NodeJS.ErrnoException).code = code;
+        (hint as NodeJS.ErrnoException).errno = (error as NodeJS.ErrnoException).errno;
+        reject(hint);
+        return;
+      }
+      if (code === "ENOENT") {
+        const hint = new Error(
+          "Cannot run docker: binary not found. Install Docker Desktop (or Docker Engine) and ensure the gateway process has docker in PATH. " +
+            "If using the macOS app or launchd, run the gateway from a terminal so it inherits your shell PATH. " +
+            "See: docs/install/docker.md.",
+        );
+        (hint as NodeJS.ErrnoException).code = code;
+        (hint as NodeJS.ErrnoException).errno = (error as NodeJS.ErrnoException).errno;
+        reject(hint);
+        return;
+      }
       reject(error);
     });
 
@@ -471,7 +494,10 @@ export async function ensureSandboxContainer(params: {
         running &&
         (typeof lastUsedAtMs !== "number" || now - lastUsedAtMs < HOT_CONTAINER_WINDOW_MS);
       if (isHot) {
-        const hint = formatSandboxRecreateHint({ scope: params.cfg.scope, sessionKey: scopeKey });
+        const hint = formatSandboxRecreateHint({
+          scope: params.cfg.scope,
+          sessionKey: scopeKey,
+        });
         defaultRuntime.log(
           `Sandbox config changed for ${containerName} (recently used). Recreate to apply: ${hint}`,
         );

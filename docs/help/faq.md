@@ -82,6 +82,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [How do I install the Chrome extension for browser takeover?](#how-do-i-install-the-chrome-extension-for-browser-takeover)
 - [Sandboxing and memory](#sandboxing-and-memory)
   - [Is there a dedicated sandboxing doc?](#is-there-a-dedicated-sandboxing-doc)
+  - [Agent fails with spawn docker EACCES or ENOENT](#agent-fails-with-spawn-docker-eacces-or-enoent)
   - [How do I bind a host folder into the sandbox?](#how-do-i-bind-a-host-folder-into-the-sandbox)
   - [How does memory work?](#how-does-memory-work)
   - [Memory keeps forgetting things. How do I make it stick?](#memory-keeps-forgetting-things-how-do-i-make-it-stick)
@@ -1191,6 +1192,21 @@ You still need to click the extension button on the tab you want to control (it 
 ### Is there a dedicated sandboxing doc
 
 Yes. See [Sandboxing](/gateway/sandboxing). For Docker-specific setup (full gateway in Docker or sandbox images), see [Docker](/install/docker).
+
+### Agent fails with spawn docker EACCES or ENOENT
+
+This means the gateway process could not run the `docker` binary (used for agent sandboxing). **EACCES** = permission denied; **ENOENT** = docker not found in PATH.
+
+**Typical causes:** Gateway started by the macOS app or by launchd/systemd with a minimal environment, so `docker` is missing from PATH or the process is not allowed to execute it.
+
+**What to do:**
+
+1. Run the gateway from a terminal so it uses your shell’s PATH and permissions:  
+   `openclaw gateway` (then use `openclaw logs --follow` in another terminal if needed).
+2. On macOS, ensure Docker Desktop is running. If the app still fails to spawn Docker, use the CLI gateway (`openclaw gateway`) and keep the app for the control UI only.
+3. For launchd/systemd, set `PATH` (or equivalent) in the service so it includes the directory that contains the `docker` binary.
+
+Details: [Docker — spawn docker EACCES or ENOENT](/install/docker#spawn-docker-eacces-or-enoent-host-gateway--sandbox).
 
 ### Docker feels limited How do I enable full features
 
