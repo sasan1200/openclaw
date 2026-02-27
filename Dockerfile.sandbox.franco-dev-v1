@@ -1,0 +1,57 @@
+# Franco dev sandbox v1
+# Includes: Node toolchain, Jest/Playwright support deps, Azure CLI, common dev/debug tools.
+
+FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+USER root
+
+# Core tooling + diagnostics + db clients
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    jq \
+    unzip \
+    zip \
+    make \
+    build-essential \
+    python3 \
+    python3-pip \
+    python3-venv \
+    ripgrep \
+    fd-find \
+    tree \
+    dnsutils \
+    iputils-ping \
+    netcat-openbsd \
+    lsof \
+    postgresql-client \
+    redis-tools \
+    gh \
+  && rm -rf /var/lib/apt/lists/*
+
+# Azure CLI (official Microsoft repo)
+RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg \
+  && chmod go+r /etc/apt/keyrings/microsoft.gpg \
+  && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" > /etc/apt/sources.list.d/azure-cli.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends azure-cli \
+  && rm -rf /var/lib/apt/lists/*
+
+# Node package managers
+RUN corepack enable \
+  && corepack prepare pnpm@10.30.2 --activate
+
+# Ubuntu package name is fd-find; add standard alias expected by tools/scripts.
+RUN ln -sf /usr/bin/fdfind /usr/local/bin/fd
+
+# Keep same user model as Playwright base image
+USER pwuser
+WORKDIR /workspace
+
+CMD ["sleep", "infinity"]

@@ -1,6 +1,11 @@
 services:
-openclaw-gateway:
-volumes:
-- /var/run/docker.sock:/var/run/docker.sock
-ports:
-- "127.0.0.1:18889:18789"
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.tony
+    image: openclaw-tony:local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Dual-mount workspace at host path so DooD sandbox spawning resolves correctly.
+      # OpenClaw uses this path as bind mount source when spawning subagent containers.
+      - ${OPENCLAW_WORKSPACE_DIR}:${OPENCLAW_WORKSPACE_DIR}

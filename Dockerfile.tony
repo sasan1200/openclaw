@@ -1,0 +1,29 @@
+# Tony's local extension of openclaw:local
+# Adds Docker CE CLI (official repo, API 1.44+) + socket access for DooD
+# Also creates /Users/franco dir structure so workspace can be dual-mounted at host path
+# Build: docker compose build
+
+FROM openclaw:local
+
+USER root
+
+# Install Docker CE CLI from official Docker repo (docker.io on Debian is too old — API 1.41)
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" \
+       > /etc/apt/sources.list.d/docker.list \
+    && apt-get update -qq \
+    && apt-get install -y --no-install-recommends docker-ce-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add node user to root group so it can access /var/run/docker.sock (root:root srw-rw----)
+RUN usermod -aG root node
+
+# Create host-matching path structure so DooD workspace bind mounts resolve correctly
+# Workspace will be dual-mounted: /home/node/.openclaw/workspace AND /Users/franco/.openclaw/workspace
+RUN mkdir -p /Users/franco/.openclaw && chown -R node:node /Users/franco
+
+USER node
