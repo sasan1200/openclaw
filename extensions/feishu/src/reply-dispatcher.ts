@@ -28,13 +28,24 @@ export type CreateFeishuReplyDispatcherParams = {
   runtime: RuntimeEnv;
   chatId: string;
   replyToMessageId?: string;
+  replyInThread?: boolean;
+  rootId?: string;
   mentionTargets?: MentionTarget[];
   accountId?: string;
 };
 
 export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherParams) {
   const core = getFeishuRuntime();
-  const { cfg, agentId, chatId, replyToMessageId, mentionTargets, accountId } = params;
+  const {
+    cfg,
+    agentId,
+    chatId,
+    replyToMessageId,
+    replyInThread,
+    rootId,
+    mentionTargets,
+    accountId,
+  } = params;
   const account = resolveFeishuAccount({ cfg, accountId });
   const prefixContext = createReplyPrefixContext({ cfg, agentId });
 
@@ -100,7 +111,11 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
         params.runtime.log?.(`feishu[${account.accountId}] ${message}`),
       );
       try {
-        await streaming.start(chatId, resolveReceiveIdType(chatId));
+        await streaming.start(chatId, resolveReceiveIdType(chatId), {
+          replyToMessageId,
+          replyInThread,
+          rootId,
+        });
       } catch (error) {
         params.runtime.error?.(`feishu: streaming start failed: ${String(error)}`);
         streaming = null;
@@ -170,7 +185,14 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
             // Send media even when streaming handled the text
             if (hasMedia) {
               for (const mediaUrl of mediaList) {
-                await sendMediaFeishu({ cfg, to: chatId, mediaUrl, replyToMessageId, accountId });
+                await sendMediaFeishu({
+                  cfg,
+                  to: chatId,
+                  mediaUrl,
+                  replyToMessageId,
+                  replyInThread,
+                  accountId,
+                });
               }
             }
             return;
@@ -188,6 +210,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
                 to: chatId,
                 text: chunk,
                 replyToMessageId,
+                replyInThread,
                 mentions: first ? mentionTargets : undefined,
                 accountId,
               });
@@ -205,6 +228,7 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
                 to: chatId,
                 text: chunk,
                 replyToMessageId,
+                replyInThread,
                 mentions: first ? mentionTargets : undefined,
                 accountId,
               });
@@ -215,7 +239,14 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
 
         if (hasMedia) {
           for (const mediaUrl of mediaList) {
-            await sendMediaFeishu({ cfg, to: chatId, mediaUrl, replyToMessageId, accountId });
+            await sendMediaFeishu({
+              cfg,
+              to: chatId,
+              mediaUrl,
+              replyToMessageId,
+              replyInThread,
+              accountId,
+            });
           }
         }
       },
