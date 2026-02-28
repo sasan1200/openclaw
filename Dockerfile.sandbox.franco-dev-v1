@@ -20,6 +20,8 @@ RUN apt-get update \
     zip \
     make \
     build-essential \
+    kubectl \
+    prisma \
     python3 \
     python3-pip \
     python3-venv \
