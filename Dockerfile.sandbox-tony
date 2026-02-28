@@ -1,0 +1,10 @@
+FROM openclaw-sandbox:bookworm-slim
+
+USER root
+
+# Create openclaw group and tony user matching macOS IDs
+RUN groupadd -g 501 openclaw && \
+    useradd -m -u 503 -g 501 -s /bin/bash tony
+
+USER tony
+WORKDIR /workspace
