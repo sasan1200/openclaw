@@ -110,6 +110,17 @@ const GroupSessionScopeSchema = z
  * - "enabled": Messages in different topics get separate sessions
  */
 const TopicSessionModeSchema = z.enum(["disabled", "enabled"]).optional();
+const ReactionNotificationModeSchema = z.enum(["off", "own", "all"]).optional();
+
+/**
+ * Reply-in-thread mode for group chats.
+ * - "disabled" (default): Bot replies are normal inline replies
+ * - "enabled": Bot replies create or continue a Feishu topic thread
+ *
+ * When enabled, the Feishu reply API is called with `reply_in_thread: true`,
+ * causing the reply to appear as a topic (话题) under the original message.
+ */
+const ReplyInThreadSchema = z.enum(["disabled", "enabled"]).optional();
 
 export const FeishuGroupSchema = z
   .object({
@@ -121,6 +132,7 @@ export const FeishuGroupSchema = z
     systemPrompt: z.string().optional(),
     groupSessionScope: GroupSessionScopeSchema,
     topicSessionMode: TopicSessionModeSchema,
+    replyInThread: ReplyInThreadSchema,
   })
   .strict();
 
@@ -134,6 +146,7 @@ const FeishuSharedConfigShape = {
   allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
   groupPolicy: GroupPolicySchema.optional(),
   groupAllowFrom: z.array(z.union([z.string(), z.number()])).optional(),
+  groupSenderAllowFrom: z.array(z.union([z.string(), z.number()])).optional(),
   requireMention: z.boolean().optional(),
   groups: z.record(z.string(), FeishuGroupSchema.optional()).optional(),
   historyLimit: z.number().int().min(0).optional(),
@@ -147,6 +160,8 @@ const FeishuSharedConfigShape = {
   renderMode: RenderModeSchema,
   streaming: StreamingModeSchema,
   tools: FeishuToolsConfigSchema,
+  replyInThread: ReplyInThreadSchema,
+  reactionNotifications: ReactionNotificationModeSchema,
 };
 
 /**
@@ -183,6 +198,7 @@ export const FeishuConfigSchema = z
     webhookPath: z.string().optional().default("/feishu/events"),
     ...FeishuSharedConfigShape,
     dmPolicy: DmPolicySchema.optional().default("pairing"),
+    reactionNotifications: ReactionNotificationModeSchema.optional().default("own"),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
     requireMention: z.boolean().optional().default(true),
     groupSessionScope: GroupSessionScopeSchema,
