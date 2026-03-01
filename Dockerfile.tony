@@ -4,9 +4,7 @@
 # Build: docker compose build
 
 FROM openclaw:local
-
 USER root
-
 # Install Docker CE CLI from official Docker repo (docker.io on Debian is too old — API 1.41)
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
@@ -19,11 +17,22 @@ RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Add node user to root group so it can access /var/run/docker.sock (root:root srw-rw----)
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" && \
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
+    rm kubectl
+
+# Install Kustomize
+RUN curl -Lo kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz" && \
+    tar xzf kustomize.tar.gz && \
+    install kustomize /usr/local/bin/kustomize && \
+    rm kustomize kustomize.tar.gz
+
+
+    # Add node user to root group so it can access /var/run/docker.sock (root:root srw-rw----)
 RUN usermod -aG root node
 
 # Create host-matching path structure so DooD workspace bind mounts resolve correctly
 # Workspace will be dual-mounted: /home/node/.openclaw/workspace AND /Users/franco/.openclaw/workspace
 RUN mkdir -p /Users/franco/.openclaw && chown -R node:node /Users/franco
 
-USER node

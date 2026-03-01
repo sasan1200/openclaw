@@ -5,8 +5,20 @@ services:
       dockerfile: Dockerfile.tony
     image: openclaw-tony:local
     user: root
+    environment:
+      ACR_PASSWORD: ${ACR_PASSWORD}
+      ACR_REGISTRY: ${ACR_REGISTRY}
+      ACR_USERNAME: ${ACR_USERNAME}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GH_TOKEN: ${GH_TOKEN}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      BRAVE_API_KEY: ${BRAVE_API_KEY}
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY}
+      GEMINI_API_KEY: $GEMINI_API_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       # Dual-mount workspace at host path so DooD sandbox spawning resolves correctly.
       # OpenClaw uses this path as bind mount source when spawning subagent containers.
-      # - ${OPENCLAW_WORKSPACE_DIR}:${OPENCLAW_WORKSPACE_DIR}
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/franco/.openclaw:/Users/franco/.openclaw
+
