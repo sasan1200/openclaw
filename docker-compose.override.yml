@@ -14,7 +14,7 @@ services:
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
       BRAVE_API_KEY: ${BRAVE_API_KEY}
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY}
-      GEMINI_API_KEY: $GEMINI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
     volumes:
       # Dual-mount workspace at host path so DooD sandbox spawning resolves correctly.
@@ -22,3 +22,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/franco/.openclaw:/Users/franco/.openclaw
 
+  qdrant:
+    image: qdrant/qdrant:v1.17.0
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  qdrant_data:
+    driver: local
