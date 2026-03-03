@@ -3425,7 +3425,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 ### Maintenance
 
 - Skills additions (Himalaya email, CodexBar, 1Password).
-- Dependency refreshes (pi-\* stack, Slack SDK, discord-api-types, file-type, zod, Biome, Vite).
+- Dependency refreshes (pi-\* stack, Slack SDK, discord-api-types, file-type, zod, pnpm , Vite).
 
 ## 2026.1.5
 

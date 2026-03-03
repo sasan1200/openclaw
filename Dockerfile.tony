@@ -5,16 +5,22 @@
 
 FROM openclaw:local
 USER root
-# Install Docker CE CLI from official Docker repo (docker.io on Debian is too old — API 1.41)
+# Install Docker CE CLI + GitHub CLI (gh) from official repos
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
     && install -m 0755 -d /etc/apt/keyrings \
+    # Docker CE CLI
     && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
     && chmod a+r /etc/apt/keyrings/docker.asc \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" \
        > /etc/apt/sources.list.d/docker.list \
+    # GitHub CLI
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+       > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update -qq \
-    && apt-get install -y --no-install-recommends docker-ce-cli \
+    && apt-get install -y --no-install-recommends docker-ce-cli gh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
@@ -28,6 +34,35 @@ RUN curl -Lo kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/rele
     install kustomize /usr/local/bin/kustomize && \
     rm kustomize kustomize.tar.gz
 
+# Install Helm
+RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Install yq (YAML processor)
+RUN curl -sLo /usr/local/bin/yq \
+    "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" && \
+    chmod +x /usr/local/bin/yq
+
+# Install general dev tools: jq, python3, pip, rsync, make, build-essential, git
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        jq \
+        python3 \
+        python3-pip \
+        python3-venv \
+        rsync \
+        make \
+        build-essential \
+        git \
+        unzip \
+        wget \
+        less \
+        vim-tiny \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Azure CLI (official Microsoft repo)
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash && \
+    rm -rf /var/lib/apt/lists/*
+
 
     # Add node user to root group so it can access /var/run/docker.sock (root:root srw-rw----)
 RUN usermod -aG root node
@@ -35,4 +70,14 @@ RUN usermod -aG root node
 # Create host-matching path structure so DooD workspace bind mounts resolve correctly
 # Workspace will be dual-mounted: /home/node/.openclaw/workspace AND /Users/franco/.openclaw/workspace
 RUN mkdir -p /Users/franco/.openclaw && chown -R node:node /Users/franco
+
+# Set up pnpm global bin dir so `pnpm add -g` works without manual setup
+ENV PNPM_HOME="/home/node/.local/share/pnpm"
+ENV PATH="${PNPM_HOME}:${PATH}"
+RUN mkdir -p "${PNPM_HOME}" && chown -R node:node /home/node/.local
+
+# Install clawhub globally
+USER node
+RUN pnpm add -g clawhub
+USER root
 

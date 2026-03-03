@@ -21,6 +21,7 @@ services:
       # OpenClaw uses this path as bind mount source when spawning subagent containers.
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/franco/.openclaw:/Users/franco/.openclaw
+      - /Users/franco/.kube:/Users/franco/.kube
 
   qdrant:
     image: qdrant/qdrant:v1.17.0
