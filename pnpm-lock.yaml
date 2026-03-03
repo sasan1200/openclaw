@@ -29,13 +29,13 @@ importers:
         version: 3.1000.0
       '@buape/carbon':
         specifier: 0.0.0-beta-20260216184201
-        version: 0.0.0-beta-20260216184201(hono@4.11.10)(opusscript@0.1.1)
+        version: 0.0.0-beta-20260216184201(@discordjs/opus@0.10.0)(hono@4.11.10)(opusscript@0.1.1)
       '@clack/prompts':
         specifier: ^1.0.1
         version: 1.0.1
       '@discordjs/voice':
         specifier: ^0.19.0
-        version: 0.19.0(opusscript@0.1.1)
+        version: 0.19.0(@discordjs/opus@0.10.0)(opusscript@0.1.1)
       '@grammyjs/runner':
         specifier: ^2.0.3
         version: 2.0.3(grammy@1.41.0)
@@ -213,6 +213,7 @@ importers:
         version: 14.1.2
       '@types/node':
 <<<<<<< HEAD
+<<<<<<< HEAD
         specifier: ^25.3.3
         version: 25.3.3
 =======
@@ -223,6 +224,10 @@ importers:
         specifier: ^25.3.3
         version: 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+        specifier: ^25.3.3
+        version: 25.3.3
 >>>>>>> main
       '@types/qrcode-terminal':
         specifier: ^0.12.2
@@ -236,6 +241,7 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.18
 <<<<<<< HEAD
+<<<<<<< HEAD
         version: 4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)
 =======
 <<<<<<< HEAD
@@ -243,6 +249,9 @@ importers:
 =======
         version: 4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+        version: 4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)
 >>>>>>> main
       lit:
         specifier: ^3.3.2
@@ -271,6 +280,7 @@ importers:
       vitest:
         specifier: ^4.0.18
 <<<<<<< HEAD
+<<<<<<< HEAD
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
 <<<<<<< HEAD
@@ -283,6 +293,9 @@ importers:
 =======
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> upstream/main
+=======
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+>>>>>>> main
 
   extensions/acpx:
     dependencies:
@@ -376,7 +389,11 @@ importers:
         version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
 =======
         specifier: '>=2026.3.1'
+<<<<<<< HEAD
         version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(audio-decode@2.2.3)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
+>>>>>>> main
+=======
+        version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
 >>>>>>> main
 
   extensions/imessage: {}
@@ -442,7 +459,11 @@ importers:
         version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
 =======
         specifier: '>=2026.3.1'
+<<<<<<< HEAD
         version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(audio-decode@2.2.3)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
+>>>>>>> main
+=======
+        version: 2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3))
 >>>>>>> main
 
   extensions/memory-lancedb:
@@ -609,6 +630,7 @@ importers:
       vite:
         specifier: 7.3.1
 <<<<<<< HEAD
+<<<<<<< HEAD
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     devDependencies:
       '@vitest/browser-playwright':
@@ -629,11 +651,19 @@ importers:
         version: 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+        version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+    devDependencies:
+      '@vitest/browser-playwright':
+        specifier: 4.0.18
+        version: 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
+>>>>>>> main
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
       vitest:
         specifier: 4.0.18
+<<<<<<< HEAD
 <<<<<<< HEAD
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
@@ -642,6 +672,9 @@ importers:
 =======
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> main
 
 packages:
@@ -1013,6 +1046,10 @@ packages:
     resolution: {integrity: sha512-YJOVVZ545x24mHzANfYoy0BJX5PDyeZlpiJjDkUBM/V/Ao7TFX9lcUvCN4nr0tbr5ubeaXxtEBILUrHtTphVeQ==}
     hasBin: true
 
+  '@discordjs/opus@0.10.0':
+    resolution: {integrity: sha512-HHEnSNrSPmFEyndRdQBJN2YE6egyXS9JUnJWyP6jficK0Y+qKMEZXyYTgmzpjrxXP1exM/hKaNP7BRBUEWkU5w==}
+    engines: {node: '>=12.0.0'}
+
   '@discordjs/voice@0.19.0':
     resolution: {integrity: sha512-UyX6rGEXzVyPzb1yvjHtPfTlnLvB5jX/stAMdiytHhfoydX+98hfympdOwsnTktzr+IRvphxTbdErgYDJkEsvw==}
     engines: {node: '>=22.12.0'}
@@ -1182,12 +1219,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-<<<<<<< HEAD
-=======
-  '@eshaz/web-worker@1.2.2':
-    resolution: {integrity: sha512-WxXiHFmD9u/owrzempiDlBB1ZYqiLnm9s6aPc8AlFQalq2tKmqdmMr9GXOupDgzXtqnBipj8Un0gkIm7Sjf8mw==}
-
->>>>>>> upstream/main
   '@google/genai@1.43.0':
     resolution: {integrity: sha512-hklCsJNdMlDM1IwcCVcGQFBg2izY0+t5BIGbRsxi2UnKi6AGKL7pqJqmBDNRbw0bYCs4y3NA7TB+fkKfP/Nrdw==}
     engines: {node: '>=20.0.0'}
@@ -1587,6 +1618,7 @@ packages:
     hasBin: true
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@mariozechner/pi-agent-core@0.55.1':
@@ -1607,6 +1639,8 @@ packages:
     resolution: {integrity: sha512-rnqDUp2fm/ySevC0Ltj/ZFRbEc1kZ1A4qHESejj9hA8NVrb/pX9g82XwTE762JOieEGrRWAtmHLNOm7/e4dJMw==}
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@mariozechner/pi-agent-core@0.55.3':
     resolution: {integrity: sha512-rqbfpQ9BrP6BDiW+Ps3A8Z/p9+Md/pAfc/ECq8JP6cwnZL/jQgU355KWZKtF8zM9az1p0Q9hIWi9cQygVo6Auw==}
     engines: {node: '>=20.0.0'}
@@ -1624,8 +1658,11 @@ packages:
   '@mariozechner/pi-tui@0.55.3':
     resolution: {integrity: sha512-Gh4wkYgiSPCJJaB/4wEWSL7Ga8bxSq1Crp1RPRT4vKybE/DG0W/MQr5VJDvktarxtJrD16ixScwE4dzdox/PIA==}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
     engines: {node: '>=20.0.0'}
 
@@ -2462,6 +2499,7 @@ packages:
     os: [android]
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@rolldown/binding-android-arm64@1.0.0-rc.5':
@@ -2482,12 +2520,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-darwin-arm64@1.0.0-rc.5':
     resolution: {integrity: sha512-ZP9xb9lPAex36pvkNWCjSEJW/Gfdm9I3ssiqOFLmpZ/vosPXgpoGxCmh+dX1Qs+/bWQE6toNFXWWL8vYoKoK9Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [darwin]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-darwin-x64@1.0.0-rc.3':
@@ -2502,12 +2543,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-darwin-x64@1.0.0-rc.5':
     resolution: {integrity: sha512-7IdrPunf6dp9mywMgTOKMMGDnMHQ6+h5gRl6LW8rhD8WK2kXX0IwzcM5Zc0B5J7xQs8QWOlKjv8BJsU/1CD3pg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-freebsd-x64@1.0.0-rc.3':
@@ -2522,12 +2566,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-freebsd-x64@1.0.0-rc.5':
     resolution: {integrity: sha512-o/JCk+dL0IN68EBhZ4DqfsfvxPfMeoM6cJtxORC1YYoxGHZyth2Kb2maXDb4oddw2wu8iIbnYXYPEzBtAF5CAg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-linux-arm-gnueabihf@1.0.0-rc.3':
@@ -2542,12 +2589,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-linux-arm-gnueabihf@1.0.0-rc.5':
     resolution: {integrity: sha512-IIBwTtA6VwxQLcEgq2mfrUgam7VvPZjhd/jxmeS1npM+edWsrrpRLHUdze+sk4rhb8/xpP3flemgcZXXUW6ukw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-linux-arm64-gnu@1.0.0-rc.3':
@@ -2562,12 +2612,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-linux-arm64-gnu@1.0.0-rc.5':
     resolution: {integrity: sha512-KSol1De1spMZL+Xg7K5IBWXIvRWv7+pveaxFWXpezezAG7CS6ojzRjtCGCiLxQricutTAi/LkNWKMsd2wNhMKQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-linux-arm64-musl@1.0.0-rc.3':
@@ -2582,12 +2635,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-linux-arm64-musl@1.0.0-rc.5':
     resolution: {integrity: sha512-WFljyDkxtXRlWxMjxeegf7xMYXxUr8u7JdXlOEWKYgDqEgxUnSEsVDxBiNWQ1D5kQKwf8Wo4sVKEYPRhCdsjwA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-linux-x64-gnu@1.0.0-rc.3':
@@ -2602,12 +2658,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-linux-x64-gnu@1.0.0-rc.5':
     resolution: {integrity: sha512-CUlplTujmbDWp2gamvrqVKi2Or8lmngXT1WxsizJfts7JrvfGhZObciaY/+CbdbS9qNnskvwMZNEhTPrn7b+WA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-linux-x64-musl@1.0.0-rc.3':
@@ -2622,12 +2681,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-linux-x64-musl@1.0.0-rc.5':
     resolution: {integrity: sha512-wdf7g9NbVZCeAo2iGhsjJb7I8ZFfs6X8bumfrWg82VK+8P6AlLXwk48a1ASiJQDTS7Svq2xVzZg3sGO2aXpHRA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-openharmony-arm64@1.0.0-rc.3':
@@ -2642,12 +2704,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-openharmony-arm64@1.0.0-rc.5':
     resolution: {integrity: sha512-0CWY7ubu12nhzz+tkpHjoG3IRSTlWYe0wrfJRf4qqjqQSGtAYgoL9kwzdvlhaFdZ5ffVeyYw9qLsChcjUMEloQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.3':
@@ -2664,6 +2729,8 @@ packages:
     resolution: {integrity: sha512-85y5JifyMgs8m5K2XzR/VDsapKbiFiohl7s5lEj7nmNGO0pkTXE7q6TQScei96BNAsoK7JC3pA7ukA8WRHVJpg==}
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.5':
     resolution: {integrity: sha512-LztXnGzv6t2u830mnZrFLRVqT/DPJ9DL4ZTz/y93rqUVkeHjMMYIYaFj+BUthiYxbVH9dH0SZYufETspKY/NhA==}
     engines: {node: '>=14.0.0'}
@@ -2672,13 +2739,17 @@ packages:
   '@rolldown/binding-win32-arm64-msvc@1.0.0-rc.5':
     resolution: {integrity: sha512-jUct1XVeGtyjqJXEAfvdFa8xoigYZ2rge7nYEm70ppQxpfH9ze2fbIrpHmP2tNM2vL/F6Dd0CpXhpjPbC6bSxQ==}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [win32]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 <<<<<<< HEAD
@@ -2700,12 +2771,15 @@ packages:
 
 <<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-win32-x64-msvc@1.0.0-rc.5':
     resolution: {integrity: sha512-VQ8F9ld5gw29epjnVGdrx8ugiLTe8BMqmhDYy7nGbdeDo4HAt4bgdZvLbViEhg7DZyHLpiEUlO5/jPSUrIuxRQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/pluginutils@1.0.0-rc.3':
@@ -2715,6 +2789,8 @@ packages:
     resolution: {integrity: sha512-RxlLX/DPoarZ9PtxVrQgZhPoor987YtKQqCo5zkjX+0S0yLJ7Vv515Wk6+xtTL67VONKJKxETWZwuZjss2idYw==}
 >>>>>>> upstream/main
 
+>>>>>>> main
+=======
 >>>>>>> main
   '@rolldown/pluginutils@1.0.0-rc.5':
     resolution: {integrity: sha512-RxlLX/DPoarZ9PtxVrQgZhPoor987YtKQqCo5zkjX+0S0yLJ7Vv515Wk6+xtTL67VONKJKxETWZwuZjss2idYw==}
@@ -3374,6 +3450,7 @@ packages:
     resolution: {integrity: sha512-Uarfe6J91b9HAUXxjvSOdiO2UPOKLm07Q1oh0JHxoZ1y8HoqxDAu3gVrsrOHeiio0kSsoVBt4wFrKOm0dKxVPQ==}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@types/node@24.10.15':
@@ -3383,14 +3460,19 @@ packages:
     resolution: {integrity: sha512-RpV6r/ij22zRRdyBPcxDeKAzH43phWVKEjL2iksqo1Vz3CuBUrgmPpPhALKiRfU7OMCmeeO9vECBMsV0hMTG8Q==}
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@types/node@24.11.0':
     resolution: {integrity: sha512-fPxQqz4VTgPI/IQ+lj9r0h+fDR66bzoeMGHp8ASee+32OSGIkeASsoZuJixsQoVef1QJbeubcPBxKk22QVoWdw==}
 
   '@types/node@25.3.3':
     resolution: {integrity: sha512-DpzbrH7wIcBaJibpKo9nnSQL0MTRdnWttGyE5haGwK86xgMOkFLp7vEyfQPGLOJh5wNYiJ3V9PmUMDhV9u8kkQ==}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
 
   '@types/qrcode-terminal@0.12.2':
@@ -5205,6 +5287,7 @@ packages:
         optional: true
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   openclaw@2026.3.1:
     resolution: {integrity: sha512-7Pt5ykhaYa8TYpLWnBhaMg6Lp6kfk3rMKgqJ3WWESKM9BizYu1fkH/rF9BLeXlsNASgZdLp4oR8H0XfvIIoXIg==}
 =======
@@ -5215,6 +5298,10 @@ packages:
   openclaw@2026.3.1:
     resolution: {integrity: sha512-7Pt5ykhaYa8TYpLWnBhaMg6Lp6kfk3rMKgqJ3WWESKM9BizYu1fkH/rF9BLeXlsNASgZdLp4oR8H0XfvIIoXIg==}
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+  openclaw@2026.3.1:
+    resolution: {integrity: sha512-7Pt5ykhaYa8TYpLWnBhaMg6Lp6kfk3rMKgqJ3WWESKM9BizYu1fkH/rF9BLeXlsNASgZdLp4oR8H0XfvIIoXIg==}
 >>>>>>> main
     engines: {node: '>=22.12.0'}
     hasBin: true
@@ -5423,10 +5510,13 @@ packages:
   prism-media@1.3.5:
     resolution: {integrity: sha512-IQdl0Q01m4LrkN1EGIE9lphov5Hy7WWlH6ulf5QdGePLlPas9p2mhgddTEHrlaXYjjFToM1/rWuwF37VF4taaA==}
     peerDependencies:
+      '@discordjs/opus': '>=0.8.0 <1.0.0'
       ffmpeg-static: ^5.0.2 || ^4.2.7 || ^3.0.0 || ^2.4.0
       node-opus: ^0.3.3
       opusscript: ^0.0.8
     peerDependenciesMeta:
+      '@discordjs/opus':
+        optional: true
       ffmpeg-static:
         optional: true
       node-opus:
@@ -7068,8 +7158,9 @@ snapshots:
 
   '@borewit/text-codec@0.2.1': {}
 
-  '@buape/carbon@0.0.0-beta-20260216184201(hono@4.11.10)(opusscript@0.1.1)':
+  '@buape/carbon@0.0.0-beta-20260216184201(@discordjs/opus@0.10.0)(hono@4.11.10)(opusscript@0.1.1)':
     dependencies:
+<<<<<<< HEAD
 <<<<<<< HEAD
       '@types/node': 25.3.3
 =======
@@ -7079,15 +7170,19 @@ snapshots:
       '@types/node': 25.3.3
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      '@types/node': 25.3.3
+>>>>>>> main
       discord-api-types: 0.38.37
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260120.0
-      '@discordjs/voice': 0.19.0(opusscript@0.1.1)
+      '@discordjs/voice': 0.19.0(@discordjs/opus@0.10.0)(opusscript@0.1.1)
       '@hono/node-server': 1.19.9(hono@4.11.10)
       '@types/bun': 1.3.9
       '@types/ws': 8.18.1
       ws: 8.19.0
     transitivePeerDependencies:
+      - '@discordjs/opus'
       - bufferutil
       - ffmpeg-static
       - hono
@@ -7223,6 +7318,9 @@ snapshots:
     optional: true
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> main
   '@discordjs/opus@0.10.0':
     dependencies:
       '@discordjs/node-pre-gyp': 0.4.5
@@ -7233,16 +7331,20 @@ snapshots:
     optional: true
 
   '@discordjs/voice@0.19.0(@discordjs/opus@0.10.0)(opusscript@0.1.1)':
+<<<<<<< HEAD
 =======
   '@discordjs/voice@0.19.0(opusscript@0.1.1)':
+>>>>>>> main
+=======
 >>>>>>> main
     dependencies:
       '@types/ws': 8.18.1
       discord-api-types: 0.38.40
-      prism-media: 1.3.5(opusscript@0.1.1)
+      prism-media: 1.3.5(@discordjs/opus@0.10.0)(opusscript@0.1.1)
       tslib: 2.8.1
       ws: 8.19.0
     transitivePeerDependencies:
+      - '@discordjs/opus'
       - bufferutil
       - ffmpeg-static
       - node-opus
@@ -7343,12 +7445,6 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-<<<<<<< HEAD
-=======
-  '@eshaz/web-worker@1.2.2':
-    optional: true
-
->>>>>>> upstream/main
   '@google/genai@1.43.0':
     dependencies:
       google-auth-library: 10.6.1
@@ -7598,6 +7694,7 @@ snapshots:
   '@line/bot-sdk@10.6.0':
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 24.11.0
 =======
 <<<<<<< HEAD
@@ -7605,6 +7702,9 @@ snapshots:
 =======
       '@types/node': 24.11.0
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 24.11.0
 >>>>>>> main
     optionalDependencies:
       axios: 1.13.6
@@ -7703,6 +7803,7 @@ snapshots:
       yoctocolors: 2.1.2
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@mariozechner/pi-agent-core@0.55.1(ws@8.19.0)(zod@4.3.6)':
@@ -7710,10 +7811,11 @@ snapshots:
       '@mariozechner/pi-ai': 0.55.1(ws@8.19.0)(zod@4.3.6)
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@mariozechner/pi-agent-core@0.55.3(ws@8.19.0)(zod@4.3.6)':
     dependencies:
       '@mariozechner/pi-ai': 0.55.3(ws@8.19.0)(zod@4.3.6)
->>>>>>> upstream/main
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - aws-crt
@@ -7724,6 +7826,7 @@ snapshots:
       - zod
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@mariozechner/pi-ai@0.55.1(ws@8.19.0)(zod@4.3.6)':
@@ -7732,11 +7835,12 @@ snapshots:
       '@aws-sdk/client-bedrock-runtime': 3.998.0
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@mariozechner/pi-ai@0.55.3(ws@8.19.0)(zod@4.3.6)':
     dependencies:
       '@anthropic-ai/sdk': 0.73.0(zod@4.3.6)
       '@aws-sdk/client-bedrock-runtime': 3.1000.0
->>>>>>> upstream/main
       '@google/genai': 1.43.0
       '@mistralai/mistralai': 1.10.0
       '@sinclair/typebox': 0.34.48
@@ -7788,6 +7892,7 @@ snapshots:
       - zod
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   '@mariozechner/pi-tui@0.55.3':
 =======
 <<<<<<< HEAD
@@ -7795,6 +7900,9 @@ snapshots:
 =======
   '@mariozechner/pi-tui@0.55.3':
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+  '@mariozechner/pi-tui@0.55.3':
 >>>>>>> main
     dependencies:
       '@types/mime-types': 2.1.4
@@ -8549,6 +8657,7 @@ snapshots:
     optional: true
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@rolldown/binding-android-arm64@1.0.0-rc.5':
@@ -8611,6 +8720,8 @@ snapshots:
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.3':
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-darwin-arm64@1.0.0-rc.5':
     optional: true
 
@@ -8640,13 +8751,17 @@ snapshots:
 
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.5':
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
     dependencies:
       '@napi-rs/wasm-runtime': 1.1.1
     optional: true
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 <<<<<<< HEAD
@@ -8659,12 +8774,15 @@ snapshots:
     optional: true
 
 >>>>>>> main
+=======
+>>>>>>> main
   '@rolldown/binding-win32-arm64-msvc@1.0.0-rc.5':
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.0.0-rc.5':
     optional: true
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
   '@rolldown/pluginutils@1.0.0-rc.3': {}
@@ -8678,6 +8796,8 @@ snapshots:
   '@rolldown/pluginutils@1.0.0-rc.5': {}
 >>>>>>> upstream/main
 
+>>>>>>> main
+=======
 >>>>>>> main
   '@rolldown/pluginutils@1.0.0-rc.5': {}
 
@@ -8838,6 +8958,7 @@ snapshots:
   '@slack/logger@4.0.0':
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -8846,12 +8967,16 @@ snapshots:
       '@types/node': 25.3.3
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      '@types/node': 25.3.3
+>>>>>>> main
 
   '@slack/oauth@3.0.4':
     dependencies:
       '@slack/logger': 4.0.0
       '@slack/web-api': 7.14.1
       '@types/jsonwebtoken': 9.0.10
+<<<<<<< HEAD
 <<<<<<< HEAD
       '@types/node': 25.3.3
 =======
@@ -8860,6 +8985,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       jsonwebtoken: 9.0.3
     transitivePeerDependencies:
@@ -8870,6 +8998,7 @@ snapshots:
       '@slack/logger': 4.0.0
       '@slack/web-api': 7.14.1
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -8877,6 +9006,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       '@types/ws': 8.18.1
       eventemitter3: 5.0.4
@@ -8893,6 +9025,7 @@ snapshots:
       '@slack/logger': 4.0.0
       '@slack/types': 2.20.0
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -8900,6 +9033,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       '@types/retry': 0.12.0
       axios: 1.13.6
@@ -9432,6 +9568,7 @@ snapshots:
     dependencies:
       '@types/connect': 3.4.38
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9439,6 +9576,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
 
   '@types/bun@1.3.9':
@@ -9460,6 +9600,7 @@ snapshots:
   '@types/connect@3.4.38':
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9467,6 +9608,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
 
   '@types/deep-eql@4.0.2': {}
@@ -9476,6 +9620,7 @@ snapshots:
   '@types/express-serve-static-core@4.19.8':
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9484,12 +9629,16 @@ snapshots:
       '@types/node': 25.3.3
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      '@types/node': 25.3.3
+>>>>>>> main
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
 
   '@types/express-serve-static-core@5.1.1':
     dependencies:
+<<<<<<< HEAD
 <<<<<<< HEAD
       '@types/node': 25.3.3
 =======
@@ -9498,6 +9647,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
@@ -9528,6 +9680,7 @@ snapshots:
     dependencies:
       '@types/ms': 2.1.0
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9535,6 +9688,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
 
   '@types/linkify-it@5.0.0': {}
@@ -9565,6 +9721,7 @@ snapshots:
       undici-types: 6.21.0
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
   '@types/node@24.10.15':
@@ -9574,14 +9731,19 @@ snapshots:
   '@types/node@25.3.2':
 =======
 >>>>>>> main
+=======
+>>>>>>> main
   '@types/node@24.11.0':
     dependencies:
       undici-types: 7.16.0
 
   '@types/node@25.3.3':
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
     dependencies:
       undici-types: 7.18.2
@@ -9596,6 +9758,7 @@ snapshots:
     dependencies:
       '@types/caseless': 0.12.5
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9603,6 +9766,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       '@types/tough-cookie': 4.0.5
       form-data: 2.5.4
@@ -9613,6 +9779,7 @@ snapshots:
     dependencies:
       '@types/mime': 1.3.5
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
       '@types/node': 25.3.2
@@ -9622,20 +9789,26 @@ snapshots:
       '@types/node': 25.3.2
 =======
 >>>>>>> main
+=======
+>>>>>>> main
       '@types/node': 25.3.3
 
   '@types/send@1.2.1':
     dependencies:
       '@types/node': 25.3.3
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
 
   '@types/serve-static@1.15.10':
     dependencies:
       '@types/http-errors': 2.0.5
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9643,6 +9816,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       '@types/send': 0.17.6
 
@@ -9650,6 +9826,7 @@ snapshots:
     dependencies:
       '@types/http-errors': 2.0.5
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -9657,6 +9834,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
 
   '@types/tough-cookie@4.0.5': {}
@@ -9668,6 +9848,7 @@ snapshots:
   '@types/ws@8.18.1':
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
       '@types/node': 25.3.2
@@ -9677,14 +9858,19 @@ snapshots:
       '@types/node': 25.3.2
 =======
 >>>>>>> main
+=======
+>>>>>>> main
       '@types/node': 25.3.3
 
   '@types/yauzl@2.10.3':
     dependencies:
       '@types/node': 25.3.3
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
     optional: true
 
@@ -9765,16 +9951,21 @@ snapshots:
       - supports-color
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   '@vitest/browser-playwright@4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)':
 =======
 <<<<<<< HEAD
   '@vitest/browser-playwright@4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)':
+>>>>>>> main
+=======
+  '@vitest/browser-playwright@4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)':
 >>>>>>> main
     dependencies:
       '@vitest/browser': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
       playwright: 1.58.2
       tinyrainbow: 3.0.3
+<<<<<<< HEAD
 <<<<<<< HEAD
       vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
@@ -9789,12 +9980,16 @@ snapshots:
       vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+>>>>>>> main
     transitivePeerDependencies:
       - bufferutil
       - msw
       - utf-8-validate
       - vite
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   '@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)':
     dependencies:
@@ -9810,12 +10005,18 @@ snapshots:
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+  '@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)':
+    dependencies:
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+>>>>>>> main
       '@vitest/utils': 4.0.18
       magic-string: 0.30.21
       pixelmatch: 7.1.0
       pngjs: 7.0.0
       sirv: 3.0.2
       tinyrainbow: 3.0.3
+<<<<<<< HEAD
 <<<<<<< HEAD
       vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
@@ -9825,6 +10026,9 @@ snapshots:
       vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+>>>>>>> main
       ws: 8.19.0
     transitivePeerDependencies:
       - bufferutil
@@ -9833,6 +10037,7 @@ snapshots:
       - vite
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   '@vitest/coverage-v8@4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)':
 =======
 <<<<<<< HEAD
@@ -9840,6 +10045,9 @@ snapshots:
 =======
   '@vitest/coverage-v8@4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)':
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+  '@vitest/coverage-v8@4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)':
 >>>>>>> main
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
@@ -9852,6 +10060,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
+<<<<<<< HEAD
 <<<<<<< HEAD
       vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     optionalDependencies:
@@ -9867,6 +10076,11 @@ snapshots:
       '@vitest/browser': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+    optionalDependencies:
+      '@vitest/browser': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
+>>>>>>> main
 
   '@vitest/expect@4.0.18':
     dependencies:
@@ -9878,6 +10092,7 @@ snapshots:
       tinyrainbow: 3.0.3
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
 =======
 <<<<<<< HEAD
@@ -9886,11 +10101,15 @@ snapshots:
   '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))':
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
+>>>>>>> main
     dependencies:
       '@vitest/spy': 4.0.18
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
+<<<<<<< HEAD
 <<<<<<< HEAD
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
@@ -9899,6 +10118,9 @@ snapshots:
 =======
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> main
 
   '@vitest/pretty-format@4.0.18':
@@ -10217,6 +10439,7 @@ snapshots:
   bun-types@1.3.9:
     dependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -10224,6 +10447,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
     optional: true
 
@@ -11711,6 +11937,7 @@ snapshots:
       zod: 4.3.6
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   openclaw@2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3)):
     dependencies:
       '@agentclientprotocol/sdk': 0.14.1(zod@4.3.6)
@@ -11720,12 +11947,19 @@ snapshots:
       '@discordjs/voice': 0.19.0(@discordjs/opus@0.10.0)(opusscript@0.1.1)
 =======
   openclaw@2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(audio-decode@2.2.3)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3)):
+=======
+  openclaw@2026.3.1(@napi-rs/canvas@0.1.95)(@types/express@5.0.6)(hono@4.11.10)(node-llama-cpp@3.16.2(typescript@5.9.3)):
+>>>>>>> main
     dependencies:
       '@agentclientprotocol/sdk': 0.14.1(zod@4.3.6)
       '@aws-sdk/client-bedrock': 3.1000.0
-      '@buape/carbon': 0.0.0-beta-20260216184201(hono@4.11.10)(opusscript@0.1.1)
+      '@buape/carbon': 0.0.0-beta-20260216184201(@discordjs/opus@0.10.0)(hono@4.11.10)(opusscript@0.1.1)
       '@clack/prompts': 1.0.1
+<<<<<<< HEAD
       '@discordjs/voice': 0.19.0(opusscript@0.1.1)
+>>>>>>> main
+=======
+      '@discordjs/voice': 0.19.0(@discordjs/opus@0.10.0)(opusscript@0.1.1)
 >>>>>>> main
       '@grammyjs/runner': 2.0.3(grammy@1.41.0)
       '@grammyjs/transformer-throttler': 1.2.1(grammy@1.41.0)
@@ -11733,6 +11967,7 @@ snapshots:
       '@larksuiteoapi/node-sdk': 1.59.0
       '@line/bot-sdk': 10.6.0
       '@lydell/node-pty': 1.2.0-beta.3
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 <<<<<<< HEAD
@@ -11742,13 +11977,18 @@ snapshots:
       '@mariozechner/pi-tui': 0.55.1
 =======
 >>>>>>> main
+=======
+>>>>>>> main
       '@mariozechner/pi-agent-core': 0.55.3(ws@8.19.0)(zod@4.3.6)
       '@mariozechner/pi-ai': 0.55.3(ws@8.19.0)(zod@4.3.6)
       '@mariozechner/pi-coding-agent': 0.55.3(ws@8.19.0)(zod@4.3.6)
       '@mariozechner/pi-tui': 0.55.3
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> upstream/main
+>>>>>>> main
+=======
 >>>>>>> main
       '@mozilla/readability': 0.6.0
       '@napi-rs/canvas': 0.1.95
@@ -11794,6 +12034,8 @@ snapshots:
       ws: 8.19.0
       yaml: 2.8.2
       zod: 4.3.6
+    optionalDependencies:
+      '@discordjs/opus': 0.10.0
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - '@types/express'
@@ -12042,8 +12284,9 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
-  prism-media@1.3.5(opusscript@0.1.1):
+  prism-media@1.3.5(@discordjs/opus@0.10.0)(opusscript@0.1.1):
     optionalDependencies:
+      '@discordjs/opus': 0.10.0
       opusscript: 0.1.1
 
   process-nextick-args@2.0.1: {}
@@ -12087,6 +12330,7 @@ snapshots:
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -12094,6 +12338,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       long: 5.3.2
 
@@ -12110,6 +12357,7 @@ snapshots:
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -12117,6 +12365,9 @@ snapshots:
 =======
       '@types/node': 25.3.3
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@types/node': 25.3.3
 >>>>>>> main
       long: 5.3.2
 
@@ -12271,6 +12522,7 @@ snapshots:
       glob: 10.5.0
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   rolldown-plugin-dts@0.22.3(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3):
 =======
 <<<<<<< HEAD
@@ -12278,6 +12530,9 @@ snapshots:
 =======
   rolldown-plugin-dts@0.22.2(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3):
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+  rolldown-plugin-dts@0.22.3(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3):
 >>>>>>> main
     dependencies:
       '@babel/generator': 8.0.0-rc.2
@@ -12828,6 +13083,7 @@ snapshots:
       obug: 2.1.1
       picomatch: 4.0.3
 <<<<<<< HEAD
+<<<<<<< HEAD
       rolldown: 1.0.0-rc.5
       rolldown-plugin-dts: 0.22.3(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3)
 =======
@@ -12838,6 +13094,10 @@ snapshots:
       rolldown: 1.0.0-rc.5
       rolldown-plugin-dts: 0.22.2(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3)
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      rolldown: 1.0.0-rc.5
+      rolldown-plugin-dts: 0.22.3(@typescript/native-preview@7.0.0-dev.20260301.1)(rolldown@1.0.0-rc.5)(typescript@5.9.3)
 >>>>>>> main
       semver: 7.7.4
       tinyexec: 1.0.2
@@ -12993,6 +13253,7 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@types/node': 25.3.3
 =======
 <<<<<<< HEAD
@@ -13001,11 +13262,15 @@ snapshots:
       '@types/node': 25.3.3
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+      '@types/node': 25.3.3
+>>>>>>> main
       fsevents: 2.3.3
       jiti: 2.6.1
       tsx: 4.21.0
       yaml: 2.8.2
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
@@ -13024,6 +13289,12 @@ snapshots:
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
 >>>>>>> upstream/main
 >>>>>>> main
+=======
+  vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2):
+    dependencies:
+      '@vitest/expect': 4.0.18
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+>>>>>>> main
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18
@@ -13041,6 +13312,7 @@ snapshots:
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
 <<<<<<< HEAD
+<<<<<<< HEAD
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 =======
 <<<<<<< HEAD
@@ -13053,15 +13325,22 @@ snapshots:
 =======
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 >>>>>>> main
+=======
+      vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+>>>>>>> main
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 25.3.3
 <<<<<<< HEAD
+<<<<<<< HEAD
       '@vitest/browser-playwright': 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
 =======
       '@vitest/browser-playwright': 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
 >>>>>>> upstream/main
+>>>>>>> main
+=======
+      '@vitest/browser-playwright': 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18)
 >>>>>>> main
     transitivePeerDependencies:
       - jiti
