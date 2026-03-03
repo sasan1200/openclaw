@@ -1,42 +1,6 @@
 services:
-  openclaw-gateway:
-    build:
-      context: .
-      dockerfile: Dockerfile.tony
-    image: openclaw-tony:local
-    user: root
-    environment:
-      ACR_PASSWORD: ${ACR_PASSWORD}
-      ACR_REGISTRY: ${ACR_REGISTRY}
-      ACR_USERNAME: ${ACR_USERNAME}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      GH_TOKEN: ${GH_TOKEN}
-      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
-      BRAVE_API_KEY: ${BRAVE_API_KEY}
-      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
-    volumes:
-      # Dual-mount workspace at host path so DooD sandbox spawning resolves correctly.
-      # OpenClaw uses this path as bind mount source when spawning subagent containers.
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /Users/franco/.openclaw:/Users/franco/.openclaw
-      - /Users/franco/.kube:/Users/franco/.kube
-
-  qdrant:
-    image: qdrant/qdrant:v1.17.0
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
+openclaw-gateway:
 volumes:
-  qdrant_data:
-    driver: local
+- /var/run/docker.sock:/var/run/docker.sock
+ports:
+- "127.0.0.1:18889:18789"
