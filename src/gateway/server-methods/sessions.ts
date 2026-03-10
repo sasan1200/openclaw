@@ -128,6 +128,19 @@ function migrateAndPruneSessionStoreKey(params: {
   return { target, primaryKey, entry: params.store[primaryKey] };
 }
 
+function stripRuntimeModelState(entry?: SessionEntry): SessionEntry | undefined {
+  if (!entry) {
+    return entry;
+  }
+  return {
+    ...entry,
+    model: undefined,
+    modelProvider: undefined,
+    contextTokens: undefined,
+    systemPromptReport: undefined,
+  };
+}
+
 function archiveSessionTranscriptsForSession(params: {
   sessionId: string | undefined;
   storePath: string;
@@ -207,14 +220,15 @@ async function ensureSessionRuntimeCleanup(params: {
     queueKeys.add(params.sessionId);
   }
   clearSessionQueues([...queueKeys]);
-  clearBootstrapSnapshot(params.target.canonicalKey);
   stopSubagentsForRequester({ cfg: params.cfg, requesterSessionKey: params.target.canonicalKey });
   if (!params.sessionId) {
+    clearBootstrapSnapshot(params.target.canonicalKey);
     await closeTrackedBrowserTabs();
     return undefined;
   }
   abortEmbeddedPiRun(params.sessionId);
   const ended = await waitForEmbeddedPiRunEnd(params.sessionId, 15_000);
+  clearBootstrapSnapshot(params.target.canonicalKey);
   if (ended) {
     await closeTrackedBrowserTabs();
     return undefined;
@@ -506,9 +520,10 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     const next = await updateSessionStore(storePath, (store) => {
       const { primaryKey } = migrateAndPruneSessionStoreKey({ cfg, key, store });
       const entry = store[primaryKey];
+      const resetEntry = stripRuntimeModelState(entry);
       const parsed = parseAgentSessionKey(primaryKey);
       const sessionAgentId = normalizeAgentId(parsed?.agentId ?? resolveDefaultAgentId(cfg));
-      const resolvedModel = resolveSessionModelRef(cfg, entry, sessionAgentId);
+      const resolvedModel = resolveSessionModelRef(cfg, resetEntry, sessionAgentId);
       oldSessionId = entry?.sessionId;
       oldSessionFile = entry?.sessionFile;
       const now = Date.now();
@@ -523,7 +538,7 @@ export const sessionsHandlers: GatewayRequestHandlers = {
         responseUsage: entry?.responseUsage,
         model: resolvedModel.model,
         modelProvider: resolvedModel.provider,
-        contextTokens: entry?.contextTokens,
+        contextTokens: resetEntry?.contextTokens,
         sendPolicy: entry?.sendPolicy,
         label: entry?.label,
         origin: snapshotSessionOrigin(entry),

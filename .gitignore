@@ -81,6 +81,7 @@ apps/ios/*.mobileprovision
 # Local untracked files
 .local/
 docs/.local/
+tmp/
 IDENTITY.md
 USER.md
 .tgz
@@ -121,5 +122,9 @@ dist/protocol.schema.json
 
 # Synthing
 **/.stfolder/
+<<<<<<< HEAD
 
 docker-compose.override.yml
+=======
+.dev-state
+>>>>>>> upstream/main
