@@ -192,7 +192,10 @@ function respondHeadForFile(req: IncomingMessage, res: ServerResponse, filePath:
 
 function resolveMissionControlRootSync(moduleUrl = import.meta.url): MissionControlRootState {
   const moduleDir = path.dirname(fileURLToPath(moduleUrl));
+  const explicitRoot = process.env.OPENCLAW_MISSION_CONTROL_ROOT?.trim();
   const candidates = [
+    ...(explicitRoot ? [path.resolve(explicitRoot)] : []),
+    "/app/dist/mission-control",
     path.resolve(process.cwd(), "dist/mission-control"),
     path.resolve(moduleDir, "../../dist/mission-control"),
     path.resolve(path.dirname(process.argv[1] ?? process.cwd()), "dist/mission-control"),
