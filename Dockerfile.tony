@@ -40,7 +40,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG OPENCLAW_ACPX_VERSION=0.1.15
 RUN npm install -g "acpx@${OPENCLAW_ACPX_VERSION}" vercel \
   && acpx --version
-
 # ─── kubectl ─────────────────────────────────────────────────────────────────
 RUN curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" \
   && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \

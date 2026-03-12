@@ -122,9 +122,10 @@ dist/protocol.schema.json
 
 # Synthing
 **/.stfolder/
-<<<<<<< HEAD
+
 
 docker-compose.override.yml
-=======
+
 .dev-state
->>>>>>> upstream/main
+mission-control-ui/
+src/operator-control/
