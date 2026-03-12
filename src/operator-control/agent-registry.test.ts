@@ -30,6 +30,7 @@ describe("compileOperatorAgentRegistry", () => {
             "  - id: project-ops",
             "    name: Project Ops",
             "    lead: deb",
+            "    route_via_lead: true",
             "    members: [deb]",
             "    dispatch_transport: deb-http",
             "    dispatch_endpoint_env: OPENCLAW_OPERATOR_DEB_URL",
@@ -74,6 +75,7 @@ describe("compileOperatorAgentRegistry", () => {
         expect(compiled.teams[1]).toMatchObject({
           id: "project-ops",
           lead: "deb",
+          routeViaLead: true,
           members: ["deb"],
           dispatchTransport: "deb-http",
           dispatchEndpointEnv: "OPENCLAW_OPERATOR_DEB_URL",

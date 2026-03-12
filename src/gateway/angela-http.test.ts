@@ -138,7 +138,7 @@ describe("Angela HTTP task handler", () => {
     ).toMatchObject({
       schema: "AngelaTaskReceiptV1",
       state: "started",
-      owner: "angela",
+      owner: "story-architect",
       task_id: "task-angela-1",
       run_id: "run-angela-upstream-1",
     });
@@ -148,7 +148,7 @@ describe("Angela HTTP task handler", () => {
     ).toMatchObject({
       schema: "AngelaTaskReceiptV1",
       state: "completed",
-      owner: "angela",
+      owner: "story-architect",
       task_id: "task-angela-1",
       run_id: "run-angela-upstream-1",
       result_status: "SUCCESS",
@@ -205,6 +205,7 @@ describe("Angela HTTP task handler", () => {
     ).toMatchObject({
       schema: "AngelaTaskReceiptV1",
       state: "blocked",
+      owner: "tonys-angels",
       failure_code: "angela-task-skipped",
     });
   });

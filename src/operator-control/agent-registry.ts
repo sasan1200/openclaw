@@ -51,6 +51,7 @@ export type CompiledOperatorTeamRecord = {
   kind: string | null;
   lead: string | null;
   leadKind: "agent" | "runtime" | "external" | null;
+  routeViaLead: boolean;
   mission: string | null;
   members: string[];
   runtimeIds: string[];
@@ -102,6 +103,10 @@ function asStringArray(value: unknown): string[] {
     return [];
   }
   return value.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry));
+}
+
+function asBoolean(value: unknown): boolean {
+  return value === true;
 }
 
 function ensureUnique(values: string[], label: string): string[] {
@@ -178,6 +183,7 @@ function compileTeamRecord(entry: unknown): CompiledOperatorTeamRecord {
     kind: asString(record.kind),
     lead: asString(record.lead),
     leadKind: null,
+    routeViaLead: asBoolean(record.route_via_lead),
     mission: asString(record.mission),
     members: asStringArray(record.members),
     runtimeIds: asStringArray(record.runtime_ids),

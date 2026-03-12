@@ -72,6 +72,25 @@ describe("operator team routing", () => {
       });
 
       expect(envelope.target.team_id).toBe("marketing");
+      expect(envelope.target.alias).toBe("tonys-angels");
+      expect(envelope.execution.transport).toBe("angela-http");
+    });
+  });
+
+  it("routes engineering work through Bobby before specialists", async () => {
+    await withStateDirEnv("operator-team-routing-engineering-", async () => {
+      const envelope = resolveOperatorTaskEnvelope({
+        task_id: "task-team-6",
+        idempotency_key: "idem-team-6",
+        requester: { id: "tonya", kind: "operator" },
+        target: { capability: "backend", team_id: "engineering" },
+        objective: "Route backend work through Bobby",
+        acceptance_criteria: ["engineering routed through Bobby"],
+        timeout_s: 600,
+      });
+
+      expect(envelope.target.team_id).toBe("engineering");
+      expect(envelope.target.alias).toBe("bobby-digital");
       expect(envelope.execution.transport).toBe("angela-http");
     });
   });

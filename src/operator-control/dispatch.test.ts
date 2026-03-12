@@ -856,10 +856,66 @@ describe("operator task dispatch", () => {
         task_id: "task-dispatch-4",
         capability: "marketing",
         team_id: "marketing",
+        alias: "tonys-angels",
       });
       const task = getOperatorTask("task-dispatch-4");
       expect(task?.receipt.state).toBe("queued");
-      expect(task?.receipt.owner).toBe("angela");
+      expect(task?.receipt.owner).toBe("tonys-angels");
+      expect(task?.envelope.execution.transport).toBe("angela-http");
+    });
+  });
+
+  it("dispatches engineering tasks to Bobby through the Tonya-hosted angela-http boundary", async () => {
+    await withStateDirEnv("operator-dispatch-engineering-bobby-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
+          status: "accepted",
+          message: "Bobby queued engineering request",
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_ANGELA_URL: "http://tonya.internal:18789",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-engineering-bobby",
+            idempotency_key: "task-dispatch-engineering-bobby",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "backend", team_id: "engineering" },
+            objective: "Route backend regression through Bobby",
+            tier: "STANDARD",
+            inputs: {
+              repo: "openclaw",
+            },
+            acceptance_criteria: ["Bobby accepted engineering intake"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: true,
+        endpoint: "http://tonya.internal:18789/api/message",
+        statusCode: 202,
+      });
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect(
+        JSON.parse(typeof init.body === "string" ? init.body : JSON.stringify(init.body)),
+      ).toMatchObject({
+        schema: "AngelaTaskEnvelopeV1",
+        task_id: "task-dispatch-engineering-bobby",
+        capability: "backend",
+        team_id: "engineering",
+        alias: "bobby-digital",
+      });
+      const task = getOperatorTask("task-dispatch-engineering-bobby");
+      expect(task?.receipt.state).toBe("queued");
+      expect(task?.receipt.owner).toBe("bobby-digital");
       expect(task?.envelope.execution.transport).toBe("angela-http");
     });
   });

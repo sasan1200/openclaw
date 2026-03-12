@@ -51,6 +51,10 @@ function resolveRecommendedAlias(
   agents: CompiledOperatorAgentRecord[],
   capability: string,
 ): string | null {
+  if (team.routeViaLead && team.leadKind === "agent" && team.lead) {
+    return team.lead;
+  }
+
   const candidates = agents.filter((entry) =>
     team.members.some((memberId) => normalize(memberId) === normalize(entry.id)),
   );

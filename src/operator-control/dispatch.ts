@@ -582,6 +582,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
   if (!baseUrl) {
     throw new Error("Angela base URL not configured");
   }
+  const owner = task.envelope.target.alias?.trim() || team?.lead?.trim() || "angela";
 
   return {
     baseUrl,
@@ -616,7 +617,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
         execution: task.envelope.execution,
       }),
     },
-    owner: "angela",
+    owner,
     successState: "queued",
   };
 }

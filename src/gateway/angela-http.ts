@@ -18,6 +18,16 @@ type AngelaTaskRunObserver = {
   onError: (error: unknown) => void;
 };
 
+function describeTaskDomain(task: AngelaTaskEnvelope): string {
+  if (task.team_id?.trim()) {
+    return `${task.team_id.trim()} domain`;
+  }
+  if (task.capability?.trim()) {
+    return `${task.capability.trim()} domain`;
+  }
+  return "operator";
+}
+
 function resolveAngelaSharedSecret(): string | null {
   const secret = process.env.OPENCLAW_ANGELA_SHARED_SECRET?.trim();
   return secret || null;
@@ -29,9 +39,10 @@ export function buildAngelaAgentMessage(task: AngelaTaskEnvelope): string {
   );
   const inputText =
     Object.keys(task.inputs).length > 0 ? JSON.stringify(task.inputs, null, 2) : "{}";
+  const domain = describeTaskDomain(task);
 
   return [
-    "You are executing a marketing-domain task dispatched by Tonya.",
+    `You are executing a ${domain} task dispatched by Tonya.`,
     "",
     `Task ID: ${task.task_id}`,
     `Run ID: ${task.run_id}`,
@@ -179,6 +190,7 @@ export function createAngelaTaskRequestHandler(params: {
       task.alias?.trim() ||
       process.env.OPENCLAW_ANGELA_DEFAULT_AGENT_ID?.trim() ||
       DEFAULT_MARKETING_AGENT_ID;
+    const receiptOwner = targetAgentId;
     const acceptedAt = Date.now();
     const callbackUrl = task.callback_url?.trim() || null;
 
@@ -199,7 +211,7 @@ export function createAngelaTaskRequestHandler(params: {
               task_id: task.task_id,
               run_id: task.run_id,
               state: "started",
-              owner: "angela",
+              owner: receiptOwner,
               attempt: 0,
               created_at: acceptedAt,
               updated_at: Date.now(),
@@ -231,7 +243,7 @@ export function createAngelaTaskRequestHandler(params: {
               task_id: task.task_id,
               run_id: task.run_id,
               state: mapped.state,
-              owner: "angela",
+              owner: receiptOwner,
               attempt: 0,
               created_at: acceptedAt,
               updated_at: Date.now(),
@@ -263,7 +275,7 @@ export function createAngelaTaskRequestHandler(params: {
               task_id: task.task_id,
               run_id: task.run_id,
               state: "dead-letter",
-              owner: "angela",
+              owner: receiptOwner,
               attempt: 0,
               created_at: acceptedAt,
               updated_at: Date.now(),

@@ -128,7 +128,7 @@ docker-compose.override.yml
 
 .dev-state
 mission-control-ui/
-src/operator-control/
+
 
 docker-compose.override.yml
 .dev-state
