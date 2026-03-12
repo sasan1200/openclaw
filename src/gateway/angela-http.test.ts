@@ -5,6 +5,10 @@ import { withEnvAsync } from "../test-utils/env.js";
 const { readJsonBodyOrErrorMock } = vi.hoisted(() => ({
   readJsonBodyOrErrorMock: vi.fn(),
 }));
+const { getCompiledOperatorTeamMock, resolveOperatorAngelaDefaultAliasMock } = vi.hoisted(() => ({
+  getCompiledOperatorTeamMock: vi.fn(),
+  resolveOperatorAngelaDefaultAliasMock: vi.fn(),
+}));
 
 vi.mock("./http-common.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./http-common.js")>();
@@ -13,6 +17,11 @@ vi.mock("./http-common.js", async (importOriginal) => {
     readJsonBodyOrError: readJsonBodyOrErrorMock,
   };
 });
+
+vi.mock("../operator-control/agent-registry.js", () => ({
+  getCompiledOperatorTeam: getCompiledOperatorTeamMock,
+  resolveOperatorAngelaDefaultAlias: resolveOperatorAngelaDefaultAliasMock,
+}));
 
 import { createAngelaTaskRequestHandler, ANGELA_MESSAGE_PATH } from "./angela-http.js";
 import { createGatewayRequest } from "./hooks-test-helpers.js";
@@ -63,6 +72,25 @@ describe("Angela HTTP task handler", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     readJsonBodyOrErrorMock.mockReset();
+    getCompiledOperatorTeamMock.mockReset();
+    resolveOperatorAngelaDefaultAliasMock.mockReset();
+    getCompiledOperatorTeamMock.mockReturnValue({
+      id: "marketing",
+    });
+    resolveOperatorAngelaDefaultAliasMock.mockImplementation(
+      ({ explicitAlias, teamId }: { explicitAlias?: string | null; teamId?: string | null }) => {
+        if (explicitAlias?.trim()) {
+          return explicitAlias.trim();
+        }
+        if (teamId === "engineering") {
+          return "bobby-digital";
+        }
+        if (teamId === "marketing") {
+          return "tonys-angels";
+        }
+        return "tonys-angels";
+      },
+    );
   });
 
   afterEach(() => {
@@ -208,6 +236,83 @@ describe("Angela HTTP task handler", () => {
       owner: "tonys-angels",
       failure_code: "angela-task-skipped",
     });
+  });
+
+  it("uses the configured team fallback alias when the request omits alias", async () => {
+    const handler = createAngelaTaskRequestHandler({
+      log: { warn: vi.fn() },
+      runTask: () => "run-angela-engineering-1",
+    });
+
+    readJsonBodyOrErrorMock.mockResolvedValue({
+      schema: "AngelaTaskEnvelopeV1",
+      task_id: "task-angela-engineering-1",
+      run_id: "run-angela-upstream-engineering-1",
+      objective: "Prepare engineering execution plan",
+      capability: "backend",
+      team_id: "engineering",
+      requester: { id: "tonya", kind: "operator" },
+      acceptance_criteria: ["Bobby receives task"],
+      context_refs: [],
+      inputs: { repo: "openclaw" },
+      execution: {
+        transport: "angela-http",
+        runtime: "acpx",
+        durable: true,
+      },
+    });
+    getCompiledOperatorTeamMock.mockImplementation((teamId: string) =>
+      teamId === "engineering" ? { id: "engineering" } : null,
+    );
+
+    const req = createRequest();
+    const response = createResponse();
+
+    const handled = await handler(req, response.res);
+
+    expect(handled).toBe(true);
+    expect(response.res.statusCode).toBe(202);
+    expect(JSON.parse(response.getBody())).toMatchObject({
+      agentId: "bobby-digital",
+    });
+    expect(resolveOperatorAngelaDefaultAliasMock).toHaveBeenCalledWith({
+      explicitAlias: null,
+      teamId: "engineering",
+    });
+  });
+
+  it("returns invalid_request when team fallback cannot be resolved", async () => {
+    const handler = createAngelaTaskRequestHandler({
+      log: { warn: vi.fn() },
+      runTask: vi.fn(() => "run-angela-4"),
+    });
+
+    readJsonBodyOrErrorMock.mockResolvedValue({
+      schema: "AngelaTaskEnvelopeV1",
+      task_id: "task-angela-invalid-team",
+      run_id: "run-angela-invalid-team",
+      objective: "Prepare task",
+      capability: "marketing",
+      team_id: "unknown-team",
+      requester: { id: "tonya", kind: "operator" },
+      acceptance_criteria: ["handler rejects invalid team"],
+      execution: {
+        transport: "angela-http",
+        runtime: "acpx",
+        durable: true,
+      },
+    });
+    getCompiledOperatorTeamMock.mockReturnValue(null);
+    resolveOperatorAngelaDefaultAliasMock.mockReturnValue(null);
+
+    const req = createRequest();
+    const response = createResponse();
+
+    const handled = await handler(req, response.res);
+
+    expect(handled).toBe(true);
+    expect(response.res.statusCode).toBe(400);
+    expect(response.getBody()).toContain("Unknown or unconfigured angela-http team");
   });
 
   it("rejects unauthenticated requests when the shared secret is configured", async () => {

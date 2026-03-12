@@ -1,13 +1,21 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { RunCronAgentTurnResult } from "../cron/isolated-agent.js";
+import {
+  getCompiledOperatorTeam,
+  resolveOperatorAngelaDefaultAlias,
+} from "../operator-control/agent-registry.js";
 import { angelaTaskEnvelopeSchema, type OperatorTaskState } from "../operator-control/contracts.js";
 import { safeEqualSecret } from "../security/secret-equal.js";
-import { readJsonBodyOrError, sendJson, sendMethodNotAllowed } from "./http-common.js";
+import {
+  readJsonBodyOrError,
+  sendInvalidRequest,
+  sendJson,
+  sendMethodNotAllowed,
+} from "./http-common.js";
 import { sendUnauthorized } from "./http-common.js";
 import { getBearerToken } from "./http-utils.js";
 
 export const ANGELA_MESSAGE_PATH = "/api/message";
-const DEFAULT_MARKETING_AGENT_ID = "tonys-angels";
 const DEFAULT_BODY_BYTES = 128 * 1024;
 
 type AngelaTaskEnvelope = ReturnType<typeof angelaTaskEnvelopeSchema.parse>;
@@ -31,6 +39,19 @@ function describeTaskDomain(task: AngelaTaskEnvelope): string {
 function resolveAngelaSharedSecret(): string | null {
   const secret = process.env.OPENCLAW_ANGELA_SHARED_SECRET?.trim();
   return secret || null;
+}
+
+function resolveAngelaTargetAgentId(task: AngelaTaskEnvelope): string | null {
+  if (task.team_id?.trim()) {
+    const team = getCompiledOperatorTeam(task.team_id);
+    if (!team) {
+      return null;
+    }
+  }
+  return resolveOperatorAngelaDefaultAlias({
+    explicitAlias: task.alias ?? null,
+    teamId: task.team_id ?? null,
+  });
 }
 
 export function buildAngelaAgentMessage(task: AngelaTaskEnvelope): string {
@@ -186,10 +207,16 @@ export function createAngelaTaskRequestHandler(params: {
     }
 
     const task = angelaTaskEnvelopeSchema.parse(body);
-    const targetAgentId =
-      task.alias?.trim() ||
-      process.env.OPENCLAW_ANGELA_DEFAULT_AGENT_ID?.trim() ||
-      DEFAULT_MARKETING_AGENT_ID;
+    const targetAgentId = resolveAngelaTargetAgentId(task);
+    if (!targetAgentId) {
+      sendInvalidRequest(
+        res,
+        task.team_id?.trim()
+          ? `Unknown or unconfigured angela-http team: ${task.team_id.trim()}`
+          : "No angela-http target alias could be resolved from operator config",
+      );
+      return true;
+    }
     const receiptOwner = targetAgentId;
     const acceptedAt = Date.now();
     const callbackUrl = task.callback_url?.trim() || null;

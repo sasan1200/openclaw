@@ -3,7 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { withStateDirEnv } from "../test-helpers/state-dir-env.js";
 import { withTempDir } from "../test-utils/temp-dir.js";
-import { compileOperatorAgentRegistry } from "./agent-registry.js";
+import {
+  compileOperatorAgentRegistry,
+  resolveOperatorAngelaDefaultAlias,
+} from "./agent-registry.js";
 
 describe("compileOperatorAgentRegistry", () => {
   it("compiles agents.yaml into a stable registry artifact", async () => {
@@ -13,6 +16,10 @@ describe("compileOperatorAgentRegistry", () => {
         await fs.writeFile(
           sourcePath,
           [
+            "operator_runtime:",
+            "  transports:",
+            "    angela_http:",
+            "      global_default_alias: tonya",
             "agents:",
             "  - id: tonya",
             "    name: Tonya",
@@ -64,6 +71,7 @@ describe("compileOperatorAgentRegistry", () => {
         expect(compiled.schema).toBe("OperatorAgentRegistryV1");
         expect(compiled.agentCount).toBe(2);
         expect(compiled.teamCount).toBe(2);
+        expect(compiled.operatorRuntime.transports.angelaHttp.globalDefaultAlias).toBe("tonya");
         expect(compiled.agents[0]).toMatchObject({
           id: "tonya",
           name: "Tonya",
@@ -141,6 +149,67 @@ describe("compileOperatorAgentRegistry", () => {
     });
   });
 
+  it("compiles dispatch_default_alias and resolves angela-http fallback aliases", async () => {
+    await withStateDirEnv("operator-registry-default-alias-", async () => {
+      await withTempDir("operator-registry-default-alias-workspace-", async (dir) => {
+        const sourcePath = path.join(dir, "agents.yaml");
+        await fs.writeFile(
+          sourcePath,
+          [
+            "operator_runtime:",
+            "  transports:",
+            "    angela_http:",
+            "      global_default_alias: tonys-angels",
+            "agents:",
+            "  - id: tonys-angels",
+            "    name: Tony's Angels",
+            "  - id: bobby-digital",
+            "    name: Bobby Digital",
+            "teams:",
+            "  - id: engineering",
+            "    name: Engineering",
+            "    lead: bobby-digital",
+            "    route_via_lead: true",
+            "    members: [bobby-digital]",
+            "    dispatch_transport: angela-http",
+            "    dispatch_default_alias: bobby-digital",
+            "  - id: marketing",
+            "    name: Marketing",
+            "    lead: tonys-angels",
+            "    route_via_lead: true",
+            "    members: [tonys-angels]",
+            "    dispatch_transport: angela-http",
+            "    dispatch_default_alias: tonys-angels",
+            "",
+          ].join("\n"),
+          "utf8",
+        );
+
+        const compiled = compileOperatorAgentRegistry({ sourcePath });
+
+        expect(compiled.teams).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: "engineering",
+              dispatchDefaultAlias: "bobby-digital",
+            }),
+            expect.objectContaining({
+              id: "marketing",
+              dispatchDefaultAlias: "tonys-angels",
+            }),
+          ]),
+        );
+        expect(
+          resolveOperatorAngelaDefaultAlias({
+            teamId: "engineering",
+            sourcePath,
+          }),
+        ).toBe("bobby-digital");
+        expect(resolveOperatorAngelaDefaultAlias({ sourcePath })).toBe("tonys-angels");
+      });
+    });
+  });
+
   it("rejects teams that reference unknown members", async () => {
     await withStateDirEnv("operator-registry-invalid-team-", async () => {
       await withTempDir("operator-registry-invalid-team-workspace-", async (dir) => {
@@ -163,6 +232,92 @@ describe("compileOperatorAgentRegistry", () => {
 
         expect(() => compileOperatorAgentRegistry({ sourcePath })).toThrow(
           "team references unknown member: deb",
+        );
+      });
+    });
+  });
+
+  it("rejects unknown angela-http global default aliases", async () => {
+    await withStateDirEnv("operator-registry-invalid-global-default-", async () => {
+      await withTempDir("operator-registry-invalid-global-default-workspace-", async (dir) => {
+        const sourcePath = path.join(dir, "agents.yaml");
+        await fs.writeFile(
+          sourcePath,
+          [
+            "operator_runtime:",
+            "  transports:",
+            "    angela_http:",
+            "      global_default_alias: tonys-angels",
+            "agents:",
+            "  - id: tonya",
+            "    name: Tonya",
+            "",
+          ].join("\n"),
+          "utf8",
+        );
+
+        expect(() => compileOperatorAgentRegistry({ sourcePath })).toThrow(
+          "operator_runtime angela_http global_default_alias references unknown agent: tonys-angels",
+        );
+      });
+    });
+  });
+
+  it("rejects unknown team dispatch_default_alias values", async () => {
+    await withStateDirEnv("operator-registry-invalid-team-default-", async () => {
+      await withTempDir("operator-registry-invalid-team-default-workspace-", async (dir) => {
+        const sourcePath = path.join(dir, "agents.yaml");
+        await fs.writeFile(
+          sourcePath,
+          [
+            "agents:",
+            "  - id: tonya",
+            "    name: Tonya",
+            "teams:",
+            "  - id: marketing",
+            "    name: Marketing",
+            "    lead: tonya",
+            "    members: [tonya]",
+            "    dispatch_transport: angela-http",
+            "    dispatch_default_alias: tonys-angels",
+            "",
+          ].join("\n"),
+          "utf8",
+        );
+
+        expect(() => compileOperatorAgentRegistry({ sourcePath })).toThrow(
+          "team dispatch_default_alias references unknown agent: tonys-angels",
+        );
+      });
+    });
+  });
+
+  it("rejects team dispatch_default_alias values that are outside the team", async () => {
+    await withStateDirEnv("operator-registry-invalid-team-default-member-", async () => {
+      await withTempDir("operator-registry-invalid-team-default-member-workspace-", async (dir) => {
+        const sourcePath = path.join(dir, "agents.yaml");
+        await fs.writeFile(
+          sourcePath,
+          [
+            "agents:",
+            "  - id: tonya",
+            "    name: Tonya",
+            "  - id: bobby-digital",
+            "    name: Bobby Digital",
+            "teams:",
+            "  - id: engineering",
+            "    name: Engineering",
+            "    lead: tonya",
+            "    members: [tonya]",
+            "    dispatch_transport: angela-http",
+            "    dispatch_default_alias: bobby-digital",
+            "",
+          ].join("\n"),
+          "utf8",
+        );
+
+        expect(() => compileOperatorAgentRegistry({ sourcePath })).toThrow(
+          "team dispatch_default_alias must be a member of team engineering: bobby-digital",
         );
       });
     });

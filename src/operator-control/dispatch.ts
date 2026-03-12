@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { resolveOperatorAngelaDefaultAlias } from "./agent-registry.js";
 import type { OperatorBlockerCode } from "./contracts.js";
 import { resolveOperatorRuntimeFreshness } from "./runtime-freshness.js";
 import { getOperatorTask, patchOperatorTask, submitOperatorTask } from "./task-store.js";
@@ -583,7 +584,13 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
   if (!baseUrl) {
     throw new Error("Angela base URL not configured");
   }
-  const owner = task.envelope.target.alias?.trim() || team?.lead?.trim() || "angela";
+  const owner = resolveOperatorAngelaDefaultAlias({
+    explicitAlias: task.envelope.target.alias ?? null,
+    teamId: task.envelope.target.team_id ?? null,
+  });
+  if (!owner) {
+    throw new Error("angela-http target alias not configured");
+  }
   const delegateName = `${owner} via angela-http`;
 
   return {
@@ -610,7 +617,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
         capability: task.envelope.target.capability,
         team_id: task.envelope.target.team_id ?? null,
         team_lead: team?.lead ?? null,
-        alias: task.envelope.target.alias ?? null,
+        alias: owner,
         requester: task.envelope.requester,
         acceptance_criteria: task.envelope.acceptance_criteria,
         context_refs: task.envelope.context_refs,

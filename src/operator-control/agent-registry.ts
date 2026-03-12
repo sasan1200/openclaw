@@ -45,6 +45,16 @@ export type CompiledOperatorIdentityRecord = {
   leadTeamIds: string[];
 };
 
+export type CompiledOperatorAngelaRuntimeConfig = {
+  globalDefaultAlias: string | null;
+};
+
+export type CompiledOperatorRuntimeConfig = {
+  transports: {
+    angelaHttp: CompiledOperatorAngelaRuntimeConfig;
+  };
+};
+
 export type CompiledOperatorTeamRecord = {
   id: string;
   name: string;
@@ -61,6 +71,7 @@ export type CompiledOperatorTeamRecord = {
   dispatchPath: string | null;
   dispatchAuthScheme: string | null;
   dispatchAuthEnv: string | null;
+  dispatchDefaultAlias: string | null;
   routingPolicy: string | null;
   notes: string | null;
 };
@@ -72,6 +83,7 @@ export type CompiledOperatorAgentRegistry = {
   sourceHash: string;
   agentCount: number;
   teamCount: number;
+  operatorRuntime: CompiledOperatorRuntimeConfig;
   agents: CompiledOperatorAgentRecord[];
   teams: CompiledOperatorTeamRecord[];
   pipelineOrder: string[];
@@ -81,6 +93,7 @@ export type CompiledOperatorAgentRegistry = {
 };
 
 type RawAgentRegistry = {
+  operator_runtime?: unknown;
   agents?: unknown;
   teams?: unknown;
   pipeline_order?: unknown;
@@ -193,8 +206,23 @@ function compileTeamRecord(entry: unknown): CompiledOperatorTeamRecord {
     dispatchPath: asString(record.dispatch_path),
     dispatchAuthScheme: asString(record.dispatch_auth_scheme),
     dispatchAuthEnv: asString(record.dispatch_auth_env),
+    dispatchDefaultAlias: asString(record.dispatch_default_alias),
     routingPolicy: asString(record.routing_policy),
     notes: asString(record.notes),
+  };
+}
+
+function compileOperatorRuntime(record: RawAgentRegistry): CompiledOperatorRuntimeConfig {
+  const operatorRuntime = asRecord(record.operator_runtime);
+  const transports = asRecord(operatorRuntime?.transports);
+  const angelaHttp = asRecord(transports?.angela_http);
+
+  return {
+    transports: {
+      angelaHttp: {
+        globalDefaultAlias: asString(angelaHttp?.global_default_alias),
+      },
+    },
   };
 }
 
@@ -318,6 +346,7 @@ export function compileOperatorAgentRegistry(params?: {
   const sourcePath = resolveAgentsRegistrySourcePath(params);
   const rawYaml = fs.readFileSync(sourcePath, "utf8");
   const parsed = parseRawRegistry(sourcePath);
+  const operatorRuntime = compileOperatorRuntime(parsed);
   const compiledAgents = (Array.isArray(parsed.agents) ? parsed.agents : []).map(
     compileAgentRecord,
   );
@@ -356,6 +385,13 @@ export function compileOperatorAgentRegistry(params?: {
   );
   const k8sIds = new Set(k8sCluster.map((entry) => entry.id.toLowerCase()));
   const agentsById = new Map(compiledAgents.map((entry) => [entry.id.toLowerCase(), entry]));
+  if (operatorRuntime.transports.angelaHttp.globalDefaultAlias) {
+    if (!agentIds.has(operatorRuntime.transports.angelaHttp.globalDefaultAlias.toLowerCase())) {
+      throw new Error(
+        `operator_runtime angela_http global_default_alias references unknown agent: ${operatorRuntime.transports.angelaHttp.globalDefaultAlias}`,
+      );
+    }
+  }
   for (const team of compiledTeams) {
     if (team.lead) {
       const leadKey = team.lead.toLowerCase();
@@ -376,6 +412,19 @@ export function compileOperatorAgentRegistry(params?: {
         agent.teams.push(team.id);
       }
     }
+    if (team.dispatchDefaultAlias) {
+      const aliasKey = team.dispatchDefaultAlias.toLowerCase();
+      if (!agentIds.has(aliasKey)) {
+        throw new Error(
+          `team dispatch_default_alias references unknown agent: ${team.dispatchDefaultAlias}`,
+        );
+      }
+      if (!team.members.some((memberId) => memberId.toLowerCase() === aliasKey)) {
+        throw new Error(
+          `team dispatch_default_alias must be a member of team ${team.id}: ${team.dispatchDefaultAlias}`,
+        );
+      }
+    }
     for (const runtimeId of team.runtimeIds) {
       if (!k8sIds.has(runtimeId.toLowerCase())) {
         throw new Error(`team references unknown runtime_id: ${runtimeId}`);
@@ -389,6 +438,7 @@ export function compileOperatorAgentRegistry(params?: {
     sourceHash: createHash("sha256").update(rawYaml).digest("hex"),
     agentCount: compiledAgents.length,
     teamCount: compiledTeams.length,
+    operatorRuntime,
     agents: compiledAgents,
     teams: compiledTeams,
     pipelineOrder,
@@ -404,6 +454,15 @@ export function compileOperatorAgentRegistry(params?: {
   return snapshot;
 }
 
+function findCompiledOperatorTeam(
+  registry: CompiledOperatorAgentRegistry,
+  teamId: string,
+): CompiledOperatorTeamRecord | null {
+  return (
+    registry.teams.find((entry) => entry.id.toLowerCase() === teamId.trim().toLowerCase()) ?? null
+  );
+}
+
 export function getCompiledOperatorTeam(
   teamId: string,
   params?: {
@@ -412,7 +471,26 @@ export function getCompiledOperatorTeam(
   },
 ): CompiledOperatorTeamRecord | null {
   const registry = compileOperatorAgentRegistry(params);
+  return findCompiledOperatorTeam(registry, teamId);
+}
+
+export function resolveOperatorAngelaDefaultAlias(params?: {
+  explicitAlias?: string | null;
+  teamId?: string | null;
+  workspaceDir?: string;
+  sourcePath?: string;
+}): string | null {
+  const explicitAlias = asString(params?.explicitAlias);
+  if (explicitAlias) {
+    return explicitAlias;
+  }
+
+  const registry = compileOperatorAgentRegistry(params);
+  const teamId = asString(params?.teamId);
+  const team = teamId ? findCompiledOperatorTeam(registry, teamId) : null;
   return (
-    registry.teams.find((entry) => entry.id.toLowerCase() === teamId.trim().toLowerCase()) ?? null
+    team?.dispatchDefaultAlias ??
+    registry.operatorRuntime.transports.angelaHttp.globalDefaultAlias ??
+    null
   );
 }

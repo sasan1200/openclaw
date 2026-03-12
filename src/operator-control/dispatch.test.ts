@@ -922,6 +922,61 @@ describe("operator task dispatch", () => {
     });
   });
 
+  it("uses the global angela-http default alias when a delegated task has no team or alias", async () => {
+    await withStateDirEnv("operator-dispatch-angela-global-default-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
+          status: "accepted",
+          message: "Global angela-http default accepted request",
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_ANGELA_URL: "http://tonya.internal:18789",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-angela-global-default",
+            idempotency_key: "task-dispatch-angela-global-default",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "marketing" },
+            objective: "Route through configured global angela-http fallback",
+            tier: "STANDARD",
+            acceptance_criteria: ["global fallback accepted"],
+            timeout_s: 900,
+            execution: {
+              transport: "angela-http",
+              runtime: "acpx",
+              durable: true,
+            },
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: true,
+        endpoint: "http://tonya.internal:18789/api/message",
+        statusCode: 202,
+      });
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect(
+        JSON.parse(typeof init.body === "string" ? init.body : JSON.stringify(init.body)),
+      ).toMatchObject({
+        schema: "AngelaTaskEnvelopeV1",
+        task_id: "task-dispatch-angela-global-default",
+        capability: "marketing",
+        alias: "tonys-angels",
+      });
+      const task = getOperatorTask("task-dispatch-angela-global-default");
+      expect(task?.receipt.state).toBe("queued");
+      expect(task?.receipt.owner).toBe("tonys-angels");
+    });
+  });
+
   it("sends the Angela shared secret when configured", async () => {
     await withStateDirEnv("operator-dispatch-angela-secret-", async () => {
       const fetchMock = createHttpDelegateFetchMock({

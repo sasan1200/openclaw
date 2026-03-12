@@ -13,16 +13,25 @@ describe("operator worker status", () => {
   beforeEach(() => {
     compileOperatorAgentRegistryMock.mockReset();
     compileOperatorAgentRegistryMock.mockReturnValue({
+      operatorRuntime: {
+        transports: {
+          angelaHttp: {
+            globalDefaultAlias: "tonys-angels",
+          },
+        },
+      },
       teams: [
         {
           id: "marketing",
           dispatchTransport: "angela-http",
           lead: "tonys-angels",
+          dispatchDefaultAlias: "tonys-angels",
         },
         {
           id: "engineering",
           dispatchTransport: "angela-http",
           lead: "bobby-digital",
+          dispatchDefaultAlias: "bobby-digital",
         },
         {
           id: "project-ops",
@@ -47,8 +56,13 @@ describe("operator worker status", () => {
       configured: true,
       baseUrl: "http://tonya.internal:18789",
       authConfigured: true,
+      globalDefaultAlias: "tonys-angels",
       servedTeams: ["engineering", "marketing"],
       leadAliases: ["bobby-digital", "tonys-angels"],
+      defaultAliasByTeam: {
+        engineering: "bobby-digital",
+        marketing: "tonys-angels",
+      },
     });
   });
 });

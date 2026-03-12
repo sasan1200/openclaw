@@ -73,13 +73,15 @@ export type OperatorAngelaStatusSnapshot = {
   authScheme: "bearer" | null;
   authEnv: string | null;
   authConfigured: boolean;
+  globalDefaultAlias: string | null;
   servedTeams: string[];
   leadAliases: string[];
+  defaultAliasByTeam: Record<string, string>;
 };
 
 function resolveAngelaServedDomains(): Pick<
   OperatorAngelaStatusSnapshot,
-  "servedTeams" | "leadAliases"
+  "globalDefaultAlias" | "servedTeams" | "leadAliases" | "defaultAliasByTeam"
 > {
   const registry = compileOperatorAgentRegistry();
   const teams = registry.teams
@@ -89,8 +91,16 @@ function resolveAngelaServedDomains(): Pick<
     new Set(teams.map((team) => team.lead?.trim()).filter((lead): lead is string => Boolean(lead))),
   ).toSorted((left, right) => left.localeCompare(right));
   return {
+    globalDefaultAlias: registry.operatorRuntime.transports.angelaHttp.globalDefaultAlias,
     servedTeams: teams.map((team) => team.id),
     leadAliases,
+    defaultAliasByTeam: Object.fromEntries(
+      teams
+        .filter(
+          (team) => typeof team.dispatchDefaultAlias === "string" && team.dispatchDefaultAlias,
+        )
+        .map((team) => [team.id, team.dispatchDefaultAlias as string]),
+    ),
   };
 }
 
@@ -119,7 +129,9 @@ export function getOperatorAngelaStatus(): OperatorAngelaStatusSnapshot {
     authScheme: "bearer",
     authEnv: "OPENCLAW_OPERATOR_ANGELA_SHARED_SECRET",
     authConfigured: Boolean(sharedSecret),
+    globalDefaultAlias: domains.globalDefaultAlias,
     servedTeams: domains.servedTeams,
     leadAliases: domains.leadAliases,
+    defaultAliasByTeam: domains.defaultAliasByTeam,
   };
 }
