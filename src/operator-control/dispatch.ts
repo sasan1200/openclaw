@@ -571,6 +571,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
   endpoint: string;
   init: RequestInit;
   owner: string;
+  delegateName: string;
   successState: "queued";
 } {
   const team = getResolvedOperatorTaskTeam(task.envelope);
@@ -583,6 +584,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
     throw new Error("Angela base URL not configured");
   }
   const owner = task.envelope.target.alias?.trim() || team?.lead?.trim() || "angela";
+  const delegateName = `${owner} via angela-http`;
 
   return {
     baseUrl,
@@ -618,6 +620,7 @@ function buildAngelaPayload(task: OperatorTaskRecord): {
       }),
     },
     owner,
+    delegateName,
     successState: "queued",
   };
 }
@@ -814,7 +817,7 @@ async function dispatchToDeb(task: OperatorTaskRecord): Promise<DispatchResult> 
 async function dispatchToAngela(task: OperatorTaskRecord): Promise<DispatchResult> {
   const request = buildAngelaPayload(task);
   await assertHttpDelegateReady(
-    "Angela",
+    request.delegateName,
     request.baseUrl,
     readAuthorizationHeader(request.init.headers),
     {
@@ -830,12 +833,12 @@ async function dispatchToAngela(task: OperatorTaskRecord): Promise<DispatchResul
     patchOperatorTask(task.envelope.task_id, {
       state: request.successState,
       owner: request.owner,
-      note: `dispatched to Angela: ${message}`,
+      note: `dispatched to ${request.delegateName}: ${message}`,
     });
   } else if (response.ok) {
     throw new DispatchBlockError(
       "dispatch_failed",
-      "Angela response did not satisfy the receipt contract",
+      "angela-http response did not satisfy the receipt contract",
     );
   }
 

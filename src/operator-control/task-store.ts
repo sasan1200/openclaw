@@ -313,6 +313,9 @@ export function applyOperatorExternalReceipt(
     state: receipt.state,
     owner:
       receipt.owner ??
+      (typeof receipt.metadata?.targetAgentId === "string" && receipt.metadata.targetAgentId.trim()
+        ? receipt.metadata.targetAgentId.trim()
+        : null) ??
       current.receipt.owner ??
       (receipt.schema === "AngelaTaskReceiptV1" ? "angela" : "2tony"),
     queue_latency_ms: receipt.queue_latency_ms ?? current.receipt.queue_latency_ms ?? null,

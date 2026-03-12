@@ -198,4 +198,47 @@ describe("operator task store", () => {
       expect(completed?.receipt.artifacts).toEqual(["artifact://deck-v1"]);
     });
   });
+
+  it("falls back to the delegated target agent when an angela-http receipt omits owner", async () => {
+    await withStateDirEnv("operator-task-store-angela-target-agent-fallback-", async () => {
+      const created = submitOperatorTask({
+        task_id: "task-5",
+        idempotency_key: "idem-5",
+        requester: { id: "tonya", kind: "operator" },
+        target: { capability: "backend", team_id: "engineering", alias: "bobby-digital" },
+        objective: "Bind Bobby receipt without owner",
+        tier: "STANDARD",
+        acceptance_criteria: ["engineering task completed from receipt"],
+        timeout_s: 1200,
+      });
+
+      patchOperatorTask("task-5", {
+        state: "queued",
+        owner: null,
+      });
+
+      const completed = applyOperatorExternalReceipt("task-5", {
+        schema: "AngelaTaskReceiptV1",
+        task_id: "task-5",
+        run_id: created.task.receipt.run_id,
+        state: "completed",
+        attempt: 0,
+        created_at: Date.now() - 1000,
+        updated_at: Date.now(),
+        summary: "bobby-digital routed the work",
+        result_status: "SUCCESS",
+        artifacts: [],
+        output: {
+          receipt: true,
+        },
+        metadata: {
+          targetAgentId: "bobby-digital",
+        },
+      });
+
+      expect(completed?.receipt.state).toBe("completed");
+      expect(completed?.receipt.owner).toBe("bobby-digital");
+      expect(completed?.outcome?.outcome).toBe("success");
+    });
+  });
 });

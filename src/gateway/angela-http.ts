@@ -75,7 +75,7 @@ async function postAngelaReceipt(params: {
     task_id: string;
     run_id: string;
     state: OperatorTaskState;
-    owner: "angela";
+    owner: string;
     attempt: number;
     created_at: number;
     updated_at: number;
@@ -119,7 +119,7 @@ function mapResultToReceiptState(
       state: "completed",
       failure_code: null,
       result_status: "SUCCESS",
-      summary: result.summary?.trim() || result.outputText?.trim() || "Angela task completed",
+      summary: result.summary?.trim() || result.outputText?.trim() || "Delegated task completed",
       output: {
         delivered: result.delivered ?? null,
         deliveryAttempted: result.deliveryAttempted ?? null,
@@ -131,7 +131,7 @@ function mapResultToReceiptState(
       state: "blocked",
       failure_code: "angela-task-skipped",
       result_status: null,
-      summary: result.error?.trim() || result.summary?.trim() || "Angela task was skipped",
+      summary: result.error?.trim() || result.summary?.trim() || "Delegated task was skipped",
       output: {
         delivered: result.delivered ?? null,
         deliveryAttempted: result.deliveryAttempted ?? null,
@@ -142,7 +142,7 @@ function mapResultToReceiptState(
     state: "dead-letter",
     failure_code: "angela-task-error",
     result_status: "FAILED",
-    summary: result.error?.trim() || result.summary?.trim() || "Angela task failed",
+    summary: result.error?.trim() || result.summary?.trim() || "Delegated task failed",
     output: {
       delivered: result.delivered ?? null,
       deliveryAttempted: result.deliveryAttempted ?? null,
@@ -216,7 +216,7 @@ export function createAngelaTaskRequestHandler(params: {
               created_at: acceptedAt,
               updated_at: Date.now(),
               queue_latency_ms: Date.now() - acceptedAt,
-              summary: `Angela started ${targetAgentId}`,
+              summary: `Delegated task started for ${targetAgentId}`,
               artifacts: [],
               failure_code: null,
               result_status: null,

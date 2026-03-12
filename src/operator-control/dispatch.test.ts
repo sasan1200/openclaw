@@ -861,6 +861,7 @@ describe("operator task dispatch", () => {
       const task = getOperatorTask("task-dispatch-4");
       expect(task?.receipt.state).toBe("queued");
       expect(task?.receipt.owner).toBe("tonys-angels");
+      expect(task?.events.at(-1)?.note).toContain("dispatched to tonys-angels via angela-http");
       expect(task?.envelope.execution.transport).toBe("angela-http");
     });
   });
@@ -916,6 +917,7 @@ describe("operator task dispatch", () => {
       const task = getOperatorTask("task-dispatch-engineering-bobby");
       expect(task?.receipt.state).toBe("queued");
       expect(task?.receipt.owner).toBe("bobby-digital");
+      expect(task?.events.at(-1)?.note).toContain("dispatched to bobby-digital via angela-http");
       expect(task?.envelope.execution.transport).toBe("angela-http");
     });
   });
@@ -986,7 +988,7 @@ describe("operator task dispatch", () => {
       );
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(result.dispatch.message).toContain("Angela not ready");
+      expect(result.dispatch.message).toContain("tonys-angels via angela-http not ready");
       const task = getOperatorTask("task-dispatch-angela-not-ready");
       expect(task?.receipt.state).toBe("blocked");
       expect(task?.receipt.failure_code).toBe("delegate_unavailable");
@@ -1031,7 +1033,9 @@ describe("operator task dispatch", () => {
       );
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(result.dispatch.message).toContain("Angela runtime not ready for dispatch");
+      expect(result.dispatch.message).toContain(
+        "tonys-angels via angela-http runtime not ready for dispatch",
+      );
       const task = getOperatorTask("task-dispatch-angela-stale-runtime");
       expect(task?.receipt.state).toBe("blocked");
       expect(task?.receipt.failure_code).toBe("stale_runtime");
@@ -1064,7 +1068,7 @@ describe("operator task dispatch", () => {
           }),
       );
 
-      expect(result.dispatch.message).toContain("Angela response did not satisfy");
+      expect(result.dispatch.message).toContain("angela-http response did not satisfy");
       const task = getOperatorTask("task-dispatch-angela-invalid-contract");
       expect(task?.receipt.state).toBe("blocked");
       expect(task?.receipt.failure_code).toBe("dispatch_failed");
