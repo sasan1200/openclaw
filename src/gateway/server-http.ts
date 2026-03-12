@@ -12,6 +12,7 @@ import { CANVAS_WS_PATH, handleA2uiHttpRequest } from "../canvas-host/a2ui.js";
 import type { CanvasHostHandler } from "../canvas-host/server.js";
 import { loadConfig } from "../config/config.js";
 import type { createSubsystemLogger } from "../logging/subsystem.js";
+import { resolveOperatorRuntimeIdentity } from "../operator-control/runtime-freshness.js";
 import { safeEqualSecret } from "../security/secret-equal.js";
 import { handleSlackHttpRequest } from "../slack/http/index.js";
 import {
@@ -220,11 +221,25 @@ async function handleGatewayProbeRequest(
     try {
       const result = getReadiness();
       statusCode = result.ready ? 200 : 503;
-      body = JSON.stringify(includeDetails ? result : { ready: result.ready });
+      body = JSON.stringify(
+        includeDetails
+          ? {
+              ...result,
+              identity: resolveOperatorRuntimeIdentity({ moduleUrl: import.meta.url }),
+            }
+          : { ready: result.ready },
+      );
     } catch {
       statusCode = 503;
       body = JSON.stringify(
-        includeDetails ? { ready: false, failing: ["internal"], uptimeMs: 0 } : { ready: false },
+        includeDetails
+          ? {
+              ready: false,
+              failing: ["internal"],
+              uptimeMs: 0,
+              identity: resolveOperatorRuntimeIdentity({ moduleUrl: import.meta.url }),
+            }
+          : { ready: false },
       );
     }
   } else {

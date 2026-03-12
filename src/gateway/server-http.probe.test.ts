@@ -27,7 +27,15 @@ describe("gateway probe endpoints", () => {
         await dispatchRequest(server, req, res);
 
         expect(res.statusCode).toBe(200);
-        expect(JSON.parse(getBody())).toEqual({ ready: true, failing: [], uptimeMs: 45_000 });
+        expect(JSON.parse(getBody())).toEqual({
+          ready: true,
+          failing: [],
+          uptimeMs: 45_000,
+          identity: expect.objectContaining({
+            version: expect.any(String),
+            runtimeType: expect.any(String),
+          }),
+        });
       },
     });
   });
@@ -84,6 +92,10 @@ describe("gateway probe endpoints", () => {
           ready: false,
           failing: ["discord", "telegram"],
           uptimeMs: 8_000,
+          identity: expect.objectContaining({
+            version: expect.any(String),
+            runtimeType: expect.any(String),
+          }),
         });
       },
     });
@@ -104,7 +116,15 @@ describe("gateway probe endpoints", () => {
         await dispatchRequest(server, req, res);
 
         expect(res.statusCode).toBe(503);
-        expect(JSON.parse(getBody())).toEqual({ ready: false, failing: ["internal"], uptimeMs: 0 });
+        expect(JSON.parse(getBody())).toEqual({
+          ready: false,
+          failing: ["internal"],
+          uptimeMs: 0,
+          identity: expect.objectContaining({
+            version: expect.any(String),
+            runtimeType: expect.any(String),
+          }),
+        });
       },
     });
   });

@@ -4,6 +4,71 @@ import { withEnvAsync } from "../test-utils/env.js";
 import { dispatchOperatorTask, submitOperatorTaskAndDispatch } from "./dispatch.js";
 import { getOperatorTask, submitOperatorTask } from "./task-store.js";
 
+function create2TonyFetchMock(
+  taskResponse?: Record<string, unknown>,
+  readyResponse?: Record<string, unknown>,
+) {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/ready")) {
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          pending: 0,
+          active: 0,
+          shuttingDown: false,
+          auth: { enabled: true, scheme: "bearer" },
+          backend: {
+            mode: "memory",
+            persistenceEnabled: true,
+            stateFile: null,
+            recoveredTasks: 0,
+          },
+          ...readyResponse,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    return new Response(
+      JSON.stringify(
+        taskResponse ?? {
+          taskId: "task-dispatch-1",
+          status: "accepted",
+          runId: "task-run-dispatch-1",
+        },
+      ),
+      { status: 202, headers: { "content-type": "application/json" } },
+    );
+  });
+}
+
+function createHttpDelegateFetchMock(options: {
+  actionResponse: Record<string, unknown>;
+  actionStatus: number;
+  actionStatusText: string;
+  readyStatus?: number;
+  readyStatusText?: string;
+  readyBody?: Record<string, unknown>;
+}) {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.endsWith("/ready")) {
+      return new Response(JSON.stringify(options.readyBody ?? { ready: true }), {
+        status: options.readyStatus ?? 200,
+        statusText: options.readyStatusText ?? "OK",
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify(options.actionResponse), {
+      status: options.actionStatus,
+      statusText: options.actionStatusText,
+      headers: { "content-type": "application/json" },
+    });
+  });
+}
+
 describe("operator task dispatch", () => {
   const originalFetch = globalThis.fetch;
 
@@ -17,16 +82,7 @@ describe("operator task dispatch", () => {
 
   it("submits and dispatches operator tasks to 2Tony when configured", async () => {
     await withStateDirEnv("operator-dispatch-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 202,
-        statusText: "Accepted",
-        json: async () => ({
-          taskId: "task-dispatch-1",
-          status: "accepted",
-          runId: "task-run-dispatch-1",
-        }),
-      });
+      const fetchMock = create2TonyFetchMock();
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
       const result = await withEnvAsync(
@@ -61,8 +117,8 @@ describe("operator task dispatch", () => {
         endpoint: "http://2tony.internal:3009/task",
         statusCode: 202,
       });
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect((init.headers as Record<string, string>).authorization).toBe(
         "Bearer top-secret-2tony",
       );
@@ -112,15 +168,10 @@ describe("operator task dispatch", () => {
 
   it("omits 2Tony bearer auth when no shared secret is configured", async () => {
     await withStateDirEnv("operator-dispatch-no-2tony-secret-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 202,
-        statusText: "Accepted",
-        json: async () => ({
-          taskId: "task-dispatch-2tony-no-secret",
-          status: "accepted",
-          runId: "task-run-dispatch-2tony-no-secret",
-        }),
+      const fetchMock = create2TonyFetchMock({
+        taskId: "task-dispatch-2tony-no-secret",
+        status: "accepted",
+        runId: "task-run-dispatch-2tony-no-secret",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -149,22 +200,17 @@ describe("operator task dispatch", () => {
           }),
       );
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect((init.headers as Record<string, string>).authorization).toBeUndefined();
     });
   });
 
   it("infers a concrete 2Tony task type from operator inputs", async () => {
     await withStateDirEnv("operator-dispatch-2tony-infer-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 202,
-        statusText: "Accepted",
-        json: async () => ({
-          taskId: "task-dispatch-infer",
-          status: "accepted",
-          runId: "task-run-dispatch-infer",
-        }),
+      const fetchMock = create2TonyFetchMock({
+        taskId: "task-dispatch-infer",
+        status: "accepted",
+        runId: "task-run-dispatch-infer",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -188,7 +234,7 @@ describe("operator task dispatch", () => {
           }),
       );
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect(
         JSON.parse(typeof init.body === "string" ? init.body : JSON.stringify(init.body)),
       ).toMatchObject({
@@ -239,20 +285,130 @@ describe("operator task dispatch", () => {
       expect(result.dispatch.message).toContain("could not be inferred");
       const task = getOperatorTask("task-dispatch-unmappable");
       expect(task?.receipt.state).toBe("blocked");
-      expect(task?.receipt.failure_code).toBe("dispatch-failed");
+      expect(task?.receipt.failure_code).toBe("unmapped_task_type");
+    });
+  });
+
+  it("treats generic operator taskType as intent and blocks with unmapped_task_type", async () => {
+    await withStateDirEnv("operator-dispatch-generic-engineering-", async () => {
+      const fetchMock = vi.fn();
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_2TONY_URL: "http://2tony.internal:3009",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-engineering",
+            idempotency_key: "task-dispatch-engineering",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "backend", alias: "raekwon" },
+            objective: "Generic engineering task should not leak downstream",
+            tier: "STANDARD",
+            inputs: {
+              taskType: "engineering",
+            },
+            acceptance_criteria: ["task blocks before worker dead-letter"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.dispatch.message).toContain("could not be inferred");
+      const task = getOperatorTask("task-dispatch-engineering");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("unmapped_task_type");
+    });
+  });
+
+  it("blocks dispatch when the operator runtime freshness policy is not satisfied", async () => {
+    await withStateDirEnv("operator-dispatch-stale-runtime-", async () => {
+      const fetchMock = vi.fn();
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_2TONY_URL: "http://2tony.internal:3009",
+          OPENCLAW_OPERATOR_APPROVED_REFS: "main",
+          OPENCLAW_GIT_BRANCH: "stale/tonya",
+          GIT_COMMIT: "abcdef0123456789",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-stale-runtime",
+            idempotency_key: "task-dispatch-stale-runtime",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "backend", alias: "raekwon" },
+            objective: "Dispatch should fail closed on stale runtime",
+            tier: "STANDARD",
+            inputs: {
+              worker_task_type: "git-status",
+            },
+            acceptance_criteria: ["task blocks early"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.dispatch.message).toContain("operator runtime not ready");
+      const task = getOperatorTask("task-dispatch-stale-runtime");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("stale_runtime");
+    });
+  });
+
+  it("blocks dispatch when 2Tony exposes stale runtime identity", async () => {
+    await withStateDirEnv("operator-dispatch-stale-worker-runtime-", async () => {
+      const fetchMock = create2TonyFetchMock(undefined, {
+        identity: {
+          version: "2026.3.11",
+          commit: "abcdef0123456789",
+          branch: "feature/stale",
+          builtAt: "2026-03-01T00:00:00.000Z",
+          runtimeType: "embedded",
+        },
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_2TONY_URL: "http://2tony.internal:3009",
+          OPENCLAW_OPERATOR_WORKER_APPROVED_REFS: "main",
+          OPENCLAW_OPERATOR_WORKER_MAX_AGE_HOURS: "24",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-stale-worker-runtime",
+            idempotency_key: "task-dispatch-stale-worker-runtime",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "backend", alias: "raekwon" },
+            objective: "Dispatch should fail closed on stale worker runtime",
+            tier: "STANDARD",
+            inputs: {
+              worker_task_type: "git-status",
+            },
+            acceptance_criteria: ["task blocks early"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch.message).toContain("2Tony runtime not ready");
+      const task = getOperatorTask("task-dispatch-stale-worker-runtime");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("stale_runtime");
     });
   });
 
   it("dispatches project-ops tasks to Deb when team routing selects deb-http", async () => {
     await withStateDirEnv("operator-dispatch-deb-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        json: async () => ({
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
           ok: true,
           output: "Deb Board Status",
-        }),
+        },
+        actionStatus: 200,
+        actionStatusText: "OK",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -286,20 +442,20 @@ describe("operator task dispatch", () => {
       expect(task?.receipt.state).toBe("completed");
       expect(task?.receipt.owner).toBe("deb");
       expect(task?.envelope.execution.transport).toBe("deb-http");
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect((init.headers as Record<string, string>).authorization).toBeUndefined();
     });
   });
 
   it("sends the Deb shared secret when configured", async () => {
     await withStateDirEnv("operator-dispatch-deb-secret-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        json: async () => ({
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
           ok: true,
-        }),
+        },
+        actionStatus: 200,
+        actionStatusText: "OK",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -324,21 +480,341 @@ describe("operator task dispatch", () => {
           }),
       );
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect((init.headers as Record<string, string>).authorization).toBe("Bearer top-secret-deb");
+    });
+  });
+
+  it("dispatches Dogpound specialist tasks to Deb /task with structured payload", async () => {
+    await withStateDirEnv("operator-dispatch-deb-dogpound-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
+          ok: true,
+          status: "accepted",
+          output: "Dogpound task accepted for jeffy",
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+          OPENCLAW_OPERATOR_DEB_SHARED_SECRET: "top-secret-deb",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-dogpound",
+            idempotency_key: "task-dispatch-deb-dogpound",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "kanban", team_id: "project-ops" },
+            objective: "Clean up board ownership and blockers",
+            tier: "STANDARD",
+            inputs: {
+              artifact_type: "board_hygiene_packet",
+              delivery_mode: "sync-now",
+            },
+            acceptance_criteria: ["dogpound task accepted"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: true,
+        endpoint: "http://deb.internal:3010/task",
+        statusCode: 202,
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+      expect((init.headers as Record<string, string>).authorization).toBe("Bearer top-secret-deb");
+      expect(
+        JSON.parse(typeof init.body === "string" ? init.body : JSON.stringify(init.body)),
+      ).toMatchObject({
+        schema: "DebDogpoundTaskV1",
+        capability: "kanban",
+        dog_role: "jeffy",
+        artifact_type: "board_hygiene_packet",
+        delivery_mode: "sync-now",
+      });
+
+      const task = getOperatorTask("task-dispatch-deb-dogpound");
+      expect(task?.receipt.state).toBe("completed");
+      expect(task?.receipt.owner).toBe("jeffy");
+    });
+  });
+
+  it("preserves explicit Deb command overrides even when project-ops routing selects a Dogpound alias", async () => {
+    await withStateDirEnv("operator-dispatch-deb-explicit-command-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
+          ok: true,
+          output: "Deb status synced",
+        },
+        actionStatus: 200,
+        actionStatusText: "OK",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+          OPENCLAW_OPERATOR_DEB_SHARED_SECRET: "top-secret-deb",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-explicit-command",
+            idempotency_key: "task-dispatch-deb-explicit-command",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "kanban", team_id: "project-ops" },
+            objective: "Check Deb status without creating a Dogpound task",
+            tier: "STANDARD",
+            inputs: {
+              deb_command: "status",
+            },
+            acceptance_criteria: ["deb status captured"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: true,
+        endpoint: "http://deb.internal:3010/status",
+        statusCode: 200,
+      });
+    });
+  });
+
+  it("ignores generic command fields when inferring Deb Dogpound dispatch", async () => {
+    await withStateDirEnv("operator-dispatch-deb-generic-command-ignored-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
+          ok: true,
+          status: "accepted",
+          output: "Dogpound task accepted for jeffy",
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+          OPENCLAW_OPERATOR_DEB_SHARED_SECRET: "top-secret-deb",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-generic-command-ignored",
+            idempotency_key: "task-dispatch-deb-generic-command-ignored",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "kanban", team_id: "project-ops" },
+            objective: "Dispatch Dogpound task without transport hijack",
+            tier: "STANDARD",
+            inputs: {
+              command: "status",
+              artifact_type: "board_hygiene_packet",
+            },
+            acceptance_criteria: ["dogpound task accepted"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: true,
+        endpoint: "http://deb.internal:3010/task",
+        statusCode: 202,
+      });
+    });
+  });
+
+  it("reports the inferred Deb endpoint when Dogpound dispatch fails before fetch returns", async () => {
+    await withStateDirEnv("operator-dispatch-deb-failure-endpoint-", async () => {
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.endsWith("/ready")) {
+          return new Response(JSON.stringify({ ready: true }), {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          });
+        }
+        throw new Error("network down");
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+          OPENCLAW_OPERATOR_DEB_SHARED_SECRET: "top-secret-deb",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-failure-endpoint",
+            idempotency_key: "task-dispatch-deb-failure-endpoint",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "kanban", team_id: "project-ops" },
+            objective: "Surface the correct failed Deb endpoint",
+            tier: "STANDARD",
+            inputs: {
+              artifact_type: "board_hygiene_packet",
+            },
+            acceptance_criteria: ["dogpound task accepted"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch).toMatchObject({
+        attempted: true,
+        accepted: false,
+        endpoint: "http://deb.internal:3010/task",
+        statusCode: 0,
+        message: "network down",
+      });
+      const task = getOperatorTask("task-dispatch-deb-failure-endpoint");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("dispatch_failed");
+    });
+  });
+
+  it("blocks Deb dispatch when the delegate readiness probe fails", async () => {
+    await withStateDirEnv("operator-dispatch-deb-not-ready-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { ok: true },
+        actionStatus: 200,
+        actionStatusText: "OK",
+        readyStatus: 503,
+        readyStatusText: "Service Unavailable",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-not-ready",
+            idempotency_key: "task-dispatch-deb-not-ready",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "sprint", team_id: "project-ops" },
+            objective: "Do not dispatch into an unhealthy Deb",
+            tier: "STANDARD",
+            inputs: {
+              deb_command: "status",
+            },
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result.dispatch.message).toContain("Deb not ready");
+      const task = getOperatorTask("task-dispatch-deb-not-ready");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("delegate_unavailable");
+    });
+  });
+
+  it("blocks Deb dispatch when the delegate runtime identity is stale", async () => {
+    await withStateDirEnv("operator-dispatch-deb-stale-runtime-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { ok: true },
+        actionStatus: 200,
+        actionStatusText: "OK",
+        readyBody: {
+          ready: true,
+          identity: {
+            version: "2026.3.01",
+            commit: "abcdef0123456789",
+            branch: "tony-home-main",
+            builtAt: "2026-03-01T00:00:00.000Z",
+            runtimeType: "embedded",
+          },
+        },
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+          OPENCLAW_OPERATOR_DEB_MAX_AGE_HOURS: "24",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-stale-runtime",
+            idempotency_key: "task-dispatch-deb-stale-runtime",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "sprint", team_id: "project-ops" },
+            objective: "Block stale Deb runtime",
+            tier: "STANDARD",
+            inputs: {
+              deb_command: "status",
+            },
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result.dispatch.message).toContain("Deb runtime not ready for dispatch");
+      const task = getOperatorTask("task-dispatch-deb-stale-runtime");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("stale_runtime");
+    });
+  });
+
+  it("blocks Deb dispatch when a 2xx response does not satisfy the expected contract", async () => {
+    await withStateDirEnv("operator-dispatch-deb-invalid-contract-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { status: "ok" },
+        actionStatus: 200,
+        actionStatusText: "OK",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_DEB_URL: "http://deb.internal:3010",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-deb-invalid-contract",
+            idempotency_key: "task-dispatch-deb-invalid-contract",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "sprint", team_id: "project-ops" },
+            objective: "Require a real Deb acknowledgment",
+            tier: "STANDARD",
+            inputs: {
+              deb_command: "status",
+            },
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch.message).toContain("Deb response did not satisfy");
+      const task = getOperatorTask("task-dispatch-deb-invalid-contract");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("dispatch_failed");
     });
   });
 
   it("dispatches marketing tasks to Angela when team routing selects angela-http", async () => {
     await withStateDirEnv("operator-dispatch-angela-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 202,
-        statusText: "Accepted",
-        json: async () => ({
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
           status: "accepted",
           message: "Angela queued campaign request",
-        }),
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -368,8 +844,8 @@ describe("operator task dispatch", () => {
         endpoint: "http://angela.internal:18789/api/message",
         statusCode: 202,
       });
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [endpoint, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [endpoint, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect(endpoint).toBe("http://angela.internal:18789/api/message");
       expect(init.method).toBe("POST");
       expect((init.headers as Record<string, string>).authorization).toBeUndefined();
@@ -390,13 +866,12 @@ describe("operator task dispatch", () => {
 
   it("sends the Angela shared secret when configured", async () => {
     await withStateDirEnv("operator-dispatch-angela-secret-", async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 202,
-        statusText: "Accepted",
-        json: async () => ({
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: {
           status: "accepted",
-        }),
+        },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
       });
       globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -418,10 +893,125 @@ describe("operator task dispatch", () => {
           }),
       );
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
       expect((init.headers as Record<string, string>).authorization).toBe(
         "Bearer top-secret-angela",
       );
+    });
+  });
+
+  it("blocks Angela dispatch when the delegate readiness probe fails", async () => {
+    await withStateDirEnv("operator-dispatch-angela-not-ready-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { status: "accepted" },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+        readyStatus: 503,
+        readyStatusText: "Service Unavailable",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_ANGELA_URL: "http://angela.internal:18789",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-angela-not-ready",
+            idempotency_key: "task-dispatch-angela-not-ready",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "marketing", team_id: "marketing" },
+            objective: "Do not dispatch into an unhealthy Angela",
+            tier: "STANDARD",
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result.dispatch.message).toContain("Angela not ready");
+      const task = getOperatorTask("task-dispatch-angela-not-ready");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("delegate_unavailable");
+    });
+  });
+
+  it("blocks Angela dispatch when the delegate runtime identity is stale", async () => {
+    await withStateDirEnv("operator-dispatch-angela-stale-runtime-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { status: "accepted" },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+        readyBody: {
+          ready: true,
+          identity: {
+            version: "2026.3.01",
+            commit: "abcdef0123456789",
+            branch: "tony-home-main",
+            builtAt: "2026-03-01T00:00:00.000Z",
+            runtimeType: "embedded",
+          },
+        },
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_ANGELA_URL: "http://angela.internal:18789",
+          OPENCLAW_OPERATOR_ANGELA_MAX_AGE_HOURS: "24",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-angela-stale-runtime",
+            idempotency_key: "task-dispatch-angela-stale-runtime",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "marketing", team_id: "marketing" },
+            objective: "Block stale Angela runtime",
+            tier: "STANDARD",
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result.dispatch.message).toContain("Angela runtime not ready for dispatch");
+      const task = getOperatorTask("task-dispatch-angela-stale-runtime");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("stale_runtime");
+    });
+  });
+
+  it("blocks Angela dispatch when a 2xx response does not satisfy the expected contract", async () => {
+    await withStateDirEnv("operator-dispatch-angela-invalid-contract-", async () => {
+      const fetchMock = createHttpDelegateFetchMock({
+        actionResponse: { message: "queued maybe" },
+        actionStatus: 202,
+        actionStatusText: "Accepted",
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+      const result = await withEnvAsync(
+        {
+          OPENCLAW_OPERATOR_ANGELA_URL: "http://angela.internal:18789",
+        },
+        async () =>
+          await submitOperatorTaskAndDispatch({
+            task_id: "task-dispatch-angela-invalid-contract",
+            idempotency_key: "task-dispatch-angela-invalid-contract",
+            requester: { id: "tonya", kind: "operator" },
+            target: { capability: "marketing", team_id: "marketing" },
+            objective: "Require a real Angela acknowledgment",
+            tier: "STANDARD",
+            acceptance_criteria: ["dispatch blocks"],
+            timeout_s: 900,
+          }),
+      );
+
+      expect(result.dispatch.message).toContain("Angela response did not satisfy");
+      const task = getOperatorTask("task-dispatch-angela-invalid-contract");
+      expect(task?.receipt.state).toBe("blocked");
+      expect(task?.receipt.failure_code).toBe("dispatch_failed");
     });
   });
 });

@@ -105,6 +105,9 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          build-args: |
+            OPENCLAW_GIT_COMMIT=${{ github.sha }}
+            OPENCLAW_GIT_BRANCH=${{ github.ref_name }}
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
@@ -118,6 +121,8 @@ jobs:
           platforms: linux/amd64
           build-args: |
             OPENCLAW_VARIANT=slim
+            OPENCLAW_GIT_COMMIT=${{ github.sha }}
+            OPENCLAW_GIT_BRANCH=${{ github.ref_name }}
           tags: ${{ steps.tags.outputs.slim }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
@@ -206,6 +211,9 @@ jobs:
         with:
           context: .
           platforms: linux/arm64
+          build-args: |
+            OPENCLAW_GIT_COMMIT=${{ github.sha }}
+            OPENCLAW_GIT_BRANCH=${{ github.ref_name }}
           tags: ${{ steps.tags.outputs.value }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
@@ -219,6 +227,8 @@ jobs:
           platforms: linux/arm64
           build-args: |
             OPENCLAW_VARIANT=slim
+            OPENCLAW_GIT_COMMIT=${{ github.sha }}
+            OPENCLAW_GIT_BRANCH=${{ github.ref_name }}
           tags: ${{ steps.tags.outputs.slim }}
           labels: ${{ steps.labels.outputs.value }}
           provenance: false
