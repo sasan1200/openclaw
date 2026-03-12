@@ -22,7 +22,7 @@ import {
   createChatRunState,
   createToolEventRecipientRegistry,
 } from "./server-chat.js";
-import { MAX_PAYLOAD_BYTES } from "./server-constants.js";
+import { MAX_PREAUTH_PAYLOAD_BYTES } from "./server-constants.js";
 import { attachGatewayUpgradeHandler, createGatewayHttpServer } from "./server-http.js";
 import type { DedupeEntry } from "./server-shared.js";
 import { createGatewayAngelaRequestHandler } from "./server/angela.js";
@@ -191,7 +191,7 @@ export async function createGatewayRuntimeState(params: {
 
   const wss = new WebSocketServer({
     noServer: true,
-    maxPayload: MAX_PAYLOAD_BYTES,
+    maxPayload: MAX_PREAUTH_PAYLOAD_BYTES,
   });
   for (const server of httpServers) {
     attachGatewayUpgradeHandler({
