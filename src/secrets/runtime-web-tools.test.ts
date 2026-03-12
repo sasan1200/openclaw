@@ -260,7 +260,7 @@ describe("runtime web tools resolution", () => {
         },
       }),
       env: {
-        GEMINI_API_KEY_REF: "gemini-runtime-key",
+        GEMINI_API_KEY_REF: "gemini-runtime-key", // pragma: allowlist secret
       },
     });
 
