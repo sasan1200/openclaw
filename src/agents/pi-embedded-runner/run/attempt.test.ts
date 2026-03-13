@@ -12,6 +12,7 @@ import {
   resolvePromptModeForSession,
   shouldInjectOllamaCompatNumCtx,
   decodeHtmlEntitiesInObject,
+  wrapStreamFnDropThinkingBlocks,
   wrapOllamaCompatNumCtx,
   wrapStreamFnRepairMalformedToolCallArguments,
   wrapStreamFnTrimToolCallNames,
@@ -701,6 +702,54 @@ describe("wrapStreamFnTrimToolCallNames", () => {
 
     expect(finalToolCall.name).toBe("read");
     expect(finalToolCall.id).toBe("call_42");
+  });
+});
+
+describe("wrapStreamFnDropThinkingBlocks", () => {
+  function createFakeStream(params: { resultMessage: unknown }): {
+    result: () => Promise<unknown>;
+    [Symbol.asyncIterator]: () => AsyncIterator<unknown>;
+  } {
+    return {
+      async result() {
+        return params.resultMessage;
+      },
+      [Symbol.asyncIterator]() {
+        return (async function* () {})();
+      },
+    };
+  }
+
+  it("preserves the latest replay-protected assistant message", async () => {
+    const latestAssistant = {
+      role: "assistant",
+      content: [
+        { type: "thinking", thinking: "keep me" },
+        { type: "text", text: "visible" },
+      ],
+    };
+    const context = {
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "thinking", thinking: "drop me" },
+            { type: "text", text: "older" },
+          ],
+        },
+        latestAssistant,
+      ],
+    };
+    const baseFn = vi.fn((_model, nextContext) => createFakeStream({ resultMessage: nextContext }));
+
+    const wrappedFn = wrapStreamFnDropThinkingBlocks(baseFn as never);
+    const stream = await wrappedFn({} as never, context as never, {} as never);
+    const result = await stream.result();
+    const forwarded = (result as { messages: Array<{ content: unknown[] }> }).messages;
+
+    expect(baseFn).toHaveBeenCalledTimes(1);
+    expect(forwarded[0]?.content).toEqual([{ type: "text", text: "older" }]);
+    expect(forwarded[1]?.content).toEqual(latestAssistant.content);
   });
 });
 

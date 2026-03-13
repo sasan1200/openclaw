@@ -146,6 +146,9 @@ RUN curl -fsSLo /tmp/foundry.tar.gz "https://github.com/foundry-rs/foundry/relea
 # --break-system-packages required on Python 3.11+ (Debian bookworm enforces PEP 668)
 RUN pip3 install --break-system-packages slither-analyzer
 
+# ─── Python packages (persistent — memory pipeline, API clients) ─────────────
+RUN pip3 install --break-system-packages requests openai
+
 # ─── Restore expected user + workdir ─────────────────────────────────────────
 USER tony
 WORKDIR /workspace

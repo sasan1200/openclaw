@@ -511,4 +511,35 @@ describe("validateAnthropicTurns strips dangling tool_use blocks", () => {
     const result = validateAnthropicTurns(msgs);
     expect(result).toHaveLength(3);
   });
+
+  it("preserves the latest assistant turn verbatim when requested", () => {
+    const msgs = asMessages([
+      { role: "user", content: [{ type: "text", text: "Earlier" }] },
+      {
+        role: "assistant",
+        content: [{ type: "toolUse", id: "tool-1", name: "test", input: {} }],
+      },
+      { role: "user", content: [{ type: "text", text: "Follow-up" }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "redacted_thinking", data: "opaque" },
+          { type: "toolUse", id: "tool-2", name: "latest", input: {} },
+        ],
+      },
+      { role: "user", content: [{ type: "text", text: "Newest question" }] },
+    ]);
+
+    const result = validateAnthropicTurns(msgs, {
+      preserveLatestAssistantMessage: true,
+    });
+
+    expect((result[1] as { content?: unknown[] }).content).toEqual([
+      { type: "text", text: "[tool calls omitted]" },
+    ]);
+    expect(result[3]).toBe(msgs[3]);
+    expect((result[3] as { content?: unknown[] }).content).toEqual(
+      (msgs[3] as { content?: unknown[] }).content,
+    );
+  });
 });

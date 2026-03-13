@@ -27,8 +27,12 @@ export type OperatorControlStatusSnapshot = {
     storePath: string;
     collections: ReturnType<typeof listOperatorMemory>["collections"];
   };
+  legacyWorkerFleet: ReturnType<typeof getOperatorWorkerStatus>;
+  delegatedFirstClassAgents: ReturnType<typeof getOperatorDelegatedTransportStatus>;
   worker: ReturnType<typeof getOperatorWorkerStatus>;
   mesh: {
+    legacyExecutionFleet: ReturnType<typeof getOperatorWorkerStatus>;
+    delegatedFirstClassAgents: ReturnType<typeof getOperatorDelegatedTransportStatus>;
     executionFleet: ReturnType<typeof getOperatorWorkerStatus>;
     projectOps: ReturnType<typeof getOperatorDebSyncStatus>;
     domainOrchestrators: ReturnType<typeof getOperatorDelegatedTransportStatus>;
@@ -65,8 +69,12 @@ export function getOperatorControlStatus(): OperatorControlStatusSnapshot {
       storePath: sharedMemory.storePath,
       collections: sharedMemory.collections,
     },
+    legacyWorkerFleet: worker,
+    delegatedFirstClassAgents: delegatedTransport,
     worker,
     mesh: {
+      legacyExecutionFleet: worker,
+      delegatedFirstClassAgents: delegatedTransport,
       executionFleet: worker,
       projectOps: debSync,
       domainOrchestrators: delegatedTransport,

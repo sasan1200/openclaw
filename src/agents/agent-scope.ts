@@ -144,6 +144,17 @@ export function resolveAgentConfig(
   };
 }
 
+export function resolveAgentRuntimeConfig(
+  cfg: OpenClawConfig,
+  agentId: string,
+): AgentEntry["runtime"] | undefined {
+  const runtime = resolveAgentEntry(cfg, agentId)?.runtime;
+  if (!runtime || typeof runtime !== "object") {
+    return undefined;
+  }
+  return runtime;
+}
+
 export function resolveAgentSkillsFilter(
   cfg: OpenClawConfig,
   agentId: string,

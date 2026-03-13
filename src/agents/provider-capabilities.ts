@@ -60,6 +60,16 @@ const PROVIDER_CAPABILITIES: Record<string, Partial<ProviderCapabilities>> = {
     openAiCompatTurnValidation: false,
     geminiThoughtSignatureSanitization: true,
     geminiThoughtSignatureModelHints: ["gemini"],
+    // Mistral-family models routed via OpenRouter need strict9 tool call ID sanitization.
+    transcriptToolCallIdModelHints: [
+      "mistral",
+      "mixtral",
+      "codestral",
+      "pixtral",
+      "devstral",
+      "ministral",
+      "mistralai",
+    ],
   },
   opencode: {
     openAiCompatTurnValidation: false,

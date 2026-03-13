@@ -73,7 +73,7 @@ Welcome to the lobster tank! 🦞
 - **Robin Waslander** - Security, PR triage, bug fixes
   - GitHub: [@hydro13](https://github.com/hydro13) · X: [@Robin_waslander](https://x.com/Robin_waslander)
 
-- **Tengji (George) Zhang** - Chinese model APIs, cloud, pi
+- **Tengji (Oliver) Zhang** - Chinese model APIs, cloud, pi
   - GitHub: [@odysseus0](https://github.com/odysseus0) · X: [@odysseus0z](https://x.com/odysseus0z)
 
 ## How to Contribute

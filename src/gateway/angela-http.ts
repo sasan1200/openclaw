@@ -37,7 +37,9 @@ function describeTaskDomain(task: DelegatedTaskEnvelope): string {
 }
 
 function resolveDelegatedTransportSharedSecret(): string | null {
-  const secret = process.env.OPENCLAW_ANGELA_SHARED_SECRET?.trim();
+  const secret =
+    process.env.OPENCLAW_OPERATOR_ANGELA_SHARED_SECRET?.trim() ||
+    process.env.OPENCLAW_ANGELA_SHARED_SECRET?.trim();
   return secret || null;
 }
 
@@ -214,123 +216,161 @@ export function createDelegatedTaskRequestHandler(params: {
       sendInvalidRequest(
         res,
         task.team_id?.trim()
-          ? `Unknown or unconfigured angela-http team: ${task.team_id.trim()}`
-          : "No angela-http target alias could be resolved from operator config",
+          ? `Unknown or unconfigured delegated team: ${task.team_id.trim()}`
+          : "No delegated first-class-agent target alias could be resolved from operator config",
       );
       return true;
     }
     const receiptOwner = targetAgentId;
     const acceptedAt = Date.now();
     const callbackUrl = task.callback_url?.trim() || null;
+    const upstreamRunId = task.run_id;
+    let delegatedRunId: string | null = null;
+    const pendingObserverCallbacks: Array<() => void> = [];
+    const runOrDefer = (callback: () => void) => {
+      if (delegatedRunId) {
+        callback();
+        return;
+      }
+      pendingObserverCallbacks.push(callback);
+    };
 
-    const runId = params.runTask({
+    delegatedRunId = params.runTask({
       task,
       targetAgentId,
       message: buildDelegatedAgentMessage(task),
       observer: {
         onStarted: () => {
-          if (!callbackUrl) {
-            return;
-          }
-          void postDelegatedReceipt({
-            callbackUrl,
-            log: params.log,
-            receipt: {
-              schema: "AngelaTaskReceiptV1",
-              task_id: task.task_id,
-              run_id: task.run_id,
-              state: "started",
-              owner: receiptOwner,
-              attempt: 0,
-              created_at: acceptedAt,
-              updated_at: Date.now(),
-              queue_latency_ms: Date.now() - acceptedAt,
-              summary: `Delegated task started for ${targetAgentId}`,
-              artifacts: [],
-              failure_code: null,
-              result_status: null,
-              output: {
-                agentId: targetAgentId,
+          runOrDefer(() => {
+            if (!callbackUrl) {
+              return;
+            }
+            void postDelegatedReceipt({
+              callbackUrl,
+              log: params.log,
+              receipt: {
+                schema: "AngelaTaskReceiptV1",
+                task_id: task.task_id,
+                run_id: upstreamRunId,
+                delegated_run_id: delegatedRunId,
+                upstream_run_id: upstreamRunId,
+                state: "started",
+                owner: receiptOwner,
+                attempt: 0,
+                created_at: acceptedAt,
+                updated_at: Date.now(),
+                queue_latency_ms: Date.now() - acceptedAt,
+                summary: `Delegated task started for ${targetAgentId}`,
+                artifacts: [],
+                failure_code: null,
+                result_status: null,
+                output: {
+                  agentId: targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
+                metadata: {
+                  source: "angela-http",
+                  targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
               },
-              metadata: {
-                source: "angela-http",
-                targetAgentId,
-              },
-            },
+            });
           });
         },
         onFinished: (result) => {
-          if (!callbackUrl) {
-            return;
-          }
-          const mapped = mapResultToReceiptState(result);
-          void postDelegatedReceipt({
-            callbackUrl,
-            log: params.log,
-            receipt: {
-              schema: "AngelaTaskReceiptV1",
-              task_id: task.task_id,
-              run_id: task.run_id,
-              state: mapped.state,
-              owner: receiptOwner,
-              attempt: 0,
-              created_at: acceptedAt,
-              updated_at: Date.now(),
-              queue_latency_ms: Date.now() - acceptedAt,
-              summary: mapped.summary,
-              artifacts: [],
-              failure_code: mapped.failure_code,
-              result_status: mapped.result_status,
-              output: {
-                ...mapped.output,
-                agentId: targetAgentId,
+          runOrDefer(() => {
+            if (!callbackUrl) {
+              return;
+            }
+            const mapped = mapResultToReceiptState(result);
+            void postDelegatedReceipt({
+              callbackUrl,
+              log: params.log,
+              receipt: {
+                schema: "AngelaTaskReceiptV1",
+                task_id: task.task_id,
+                run_id: upstreamRunId,
+                delegated_run_id: delegatedRunId,
+                upstream_run_id: upstreamRunId,
+                state: mapped.state,
+                owner: receiptOwner,
+                attempt: 0,
+                created_at: acceptedAt,
+                updated_at: Date.now(),
+                queue_latency_ms: Date.now() - acceptedAt,
+                summary: mapped.summary,
+                artifacts: [],
+                failure_code: mapped.failure_code,
+                result_status: mapped.result_status,
+                output: {
+                  ...mapped.output,
+                  agentId: targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
+                metadata: {
+                  source: "angela-http",
+                  targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
               },
-              metadata: {
-                source: "angela-http",
-                targetAgentId,
-              },
-            },
+            });
           });
         },
         onError: (error) => {
-          if (!callbackUrl) {
-            return;
-          }
-          void postDelegatedReceipt({
-            callbackUrl,
-            log: params.log,
-            receipt: {
-              schema: "AngelaTaskReceiptV1",
-              task_id: task.task_id,
-              run_id: task.run_id,
-              state: "dead-letter",
-              owner: receiptOwner,
-              attempt: 0,
-              created_at: acceptedAt,
-              updated_at: Date.now(),
-              queue_latency_ms: Date.now() - acceptedAt,
-              summary: String(error),
-              artifacts: [],
-              failure_code: "angela-dispatch-error",
-              result_status: "FAILED",
-              output: {
-                agentId: targetAgentId,
+          runOrDefer(() => {
+            if (!callbackUrl) {
+              return;
+            }
+            void postDelegatedReceipt({
+              callbackUrl,
+              log: params.log,
+              receipt: {
+                schema: "AngelaTaskReceiptV1",
+                task_id: task.task_id,
+                run_id: upstreamRunId,
+                delegated_run_id: delegatedRunId,
+                upstream_run_id: upstreamRunId,
+                state: "dead-letter",
+                owner: receiptOwner,
+                attempt: 0,
+                created_at: acceptedAt,
+                updated_at: Date.now(),
+                queue_latency_ms: Date.now() - acceptedAt,
+                summary: String(error),
+                artifacts: [],
+                failure_code: "angela-dispatch-error",
+                result_status: "FAILED",
+                output: {
+                  agentId: targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
+                metadata: {
+                  source: "angela-http",
+                  targetAgentId,
+                  delegatedRunId,
+                  upstreamRunId,
+                },
               },
-              metadata: {
-                source: "angela-http",
-                targetAgentId,
-              },
-            },
+            });
           });
         },
       },
     });
+    for (const callback of pendingObserverCallbacks) {
+      callback();
+    }
 
     sendJson(res, 202, {
       ok: true,
       status: "accepted",
       taskId: task.task_id,
-      runId: runId || task.run_id,
+      runId: upstreamRunId,
+      delegatedRunId,
       agentId: targetAgentId,
       callbackRegistered: Boolean(callbackUrl),
     });

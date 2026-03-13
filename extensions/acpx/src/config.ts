@@ -7,8 +7,10 @@ export type AcpxPermissionMode = (typeof ACPX_PERMISSION_MODES)[number];
 
 export const ACPX_NON_INTERACTIVE_POLICIES = ["deny", "fail"] as const;
 export type AcpxNonInteractivePermissionPolicy = (typeof ACPX_NON_INTERACTIVE_POLICIES)[number];
+export const ACPX_AUTH_POLICIES = ["skip", "fail"] as const;
+export type AcpxAuthPolicy = (typeof ACPX_AUTH_POLICIES)[number];
 
-export const ACPX_PINNED_VERSION = "0.1.16";
+export const ACPX_PINNED_VERSION = "0.2.0";
 export const ACPX_VERSION_ANY = "any";
 const ACPX_BIN_NAME = process.platform === "win32" ? "acpx.cmd" : "acpx";
 export const ACPX_PLUGIN_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +37,7 @@ export type AcpxPluginConfig = {
   command?: string;
   expectedVersion?: string;
   cwd?: string;
+  authPolicy?: AcpxAuthPolicy;
   permissionMode?: AcpxPermissionMode;
   nonInteractivePermissions?: AcpxNonInteractivePermissionPolicy;
   strictWindowsCmdWrapper?: boolean;
@@ -50,6 +53,7 @@ export type ResolvedAcpxPluginConfig = {
   stripProviderAuthEnvVars: boolean;
   installCommand: string;
   cwd: string;
+  authPolicy: AcpxAuthPolicy;
   permissionMode: AcpxPermissionMode;
   nonInteractivePermissions: AcpxNonInteractivePermissionPolicy;
   strictWindowsCmdWrapper: boolean;
@@ -60,6 +64,7 @@ export type ResolvedAcpxPluginConfig = {
 
 const DEFAULT_PERMISSION_MODE: AcpxPermissionMode = "approve-reads";
 const DEFAULT_NON_INTERACTIVE_POLICY: AcpxNonInteractivePermissionPolicy = "fail";
+const DEFAULT_AUTH_POLICY: AcpxAuthPolicy = "skip";
 const DEFAULT_QUEUE_OWNER_TTL_SECONDS = 0.1;
 const DEFAULT_STRICT_WINDOWS_CMD_WRAPPER = true;
 
@@ -79,6 +84,10 @@ function isNonInteractivePermissionPolicy(
   value: string,
 ): value is AcpxNonInteractivePermissionPolicy {
   return ACPX_NON_INTERACTIVE_POLICIES.includes(value as AcpxNonInteractivePermissionPolicy);
+}
+
+function isAuthPolicy(value: string): value is AcpxAuthPolicy {
+  return ACPX_AUTH_POLICIES.includes(value as AcpxAuthPolicy);
 }
 
 function isMcpServerConfig(value: unknown): value is McpServerConfig {
@@ -122,6 +131,7 @@ function parseAcpxPluginConfig(value: unknown): ParseResult {
     "command",
     "expectedVersion",
     "cwd",
+    "authPolicy",
     "permissionMode",
     "nonInteractivePermissions",
     "strictWindowsCmdWrapper",
@@ -151,6 +161,14 @@ function parseAcpxPluginConfig(value: unknown): ParseResult {
   const cwd = value.cwd;
   if (cwd !== undefined && (typeof cwd !== "string" || cwd.trim() === "")) {
     return { ok: false, message: "cwd must be a non-empty string" };
+  }
+
+  const authPolicy = value.authPolicy;
+  if (authPolicy !== undefined && (typeof authPolicy !== "string" || !isAuthPolicy(authPolicy))) {
+    return {
+      ok: false,
+      message: `authPolicy must be one of: ${ACPX_AUTH_POLICIES.join(", ")}`,
+    };
   }
 
   const permissionMode = value.permissionMode;
@@ -220,6 +238,7 @@ function parseAcpxPluginConfig(value: unknown): ParseResult {
       command: typeof command === "string" ? command.trim() : undefined,
       expectedVersion: typeof expectedVersion === "string" ? expectedVersion.trim() : undefined,
       cwd: typeof cwd === "string" ? cwd.trim() : undefined,
+      authPolicy: typeof authPolicy === "string" ? authPolicy : undefined,
       permissionMode: typeof permissionMode === "string" ? permissionMode : undefined,
       nonInteractivePermissions:
         typeof nonInteractivePermissions === "string" ? nonInteractivePermissions : undefined,
@@ -271,6 +290,10 @@ export function createAcpxPluginConfigSchema(): OpenClawPluginConfigSchema {
         command: { type: "string" },
         expectedVersion: { type: "string" },
         cwd: { type: "string" },
+        authPolicy: {
+          type: "string",
+          enum: [...ACPX_AUTH_POLICIES],
+        },
         permissionMode: {
           type: "string",
           enum: [...ACPX_PERMISSION_MODES],
@@ -348,6 +371,7 @@ export function resolveAcpxPluginConfig(params: {
     stripProviderAuthEnvVars,
     installCommand,
     cwd,
+    authPolicy: normalized.authPolicy ?? DEFAULT_AUTH_POLICY,
     permissionMode: normalized.permissionMode ?? DEFAULT_PERMISSION_MODE,
     nonInteractivePermissions:
       normalized.nonInteractivePermissions ?? DEFAULT_NON_INTERACTIVE_POLICY,

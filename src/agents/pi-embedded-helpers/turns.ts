@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { findLatestAssistantMessageIndex } from "../pi-embedded-runner/thinking.js";
 
 type AnthropicContentBlock = {
   type: "text" | "toolUse" | "toolResult";
@@ -13,8 +14,16 @@ type AnthropicContentBlock = {
  * following user message does not contain a matching tool_result block.
  * This fixes the "tool_use ids found without tool_result blocks" error from Anthropic.
  */
-function stripDanglingAnthropicToolUses(messages: AgentMessage[]): AgentMessage[] {
+function stripDanglingAnthropicToolUses(
+  messages: AgentMessage[],
+  options?: {
+    preserveLatestAssistantMessage?: boolean;
+  },
+): AgentMessage[] {
   const result: AgentMessage[] = [];
+  const latestAssistantIndex = options?.preserveLatestAssistantMessage
+    ? findLatestAssistantMessageIndex(messages)
+    : -1;
 
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -25,6 +34,10 @@ function stripDanglingAnthropicToolUses(messages: AgentMessage[]): AgentMessage[
 
     const msgRole = (msg as { role?: unknown }).role as string | undefined;
     if (msgRole !== "assistant") {
+      result.push(msg);
+      continue;
+    }
+    if (i === latestAssistantIndex) {
       result.push(msg);
       continue;
     }
@@ -189,9 +202,14 @@ export function mergeConsecutiveUserTurns(
  * Merges consecutive user messages together.
  * Also strips dangling tool_use blocks that lack corresponding tool_result blocks.
  */
-export function validateAnthropicTurns(messages: AgentMessage[]): AgentMessage[] {
+export function validateAnthropicTurns(
+  messages: AgentMessage[],
+  options?: {
+    preserveLatestAssistantMessage?: boolean;
+  },
+): AgentMessage[] {
   // First, strip dangling tool_use blocks from assistant messages
-  const stripped = stripDanglingAnthropicToolUses(messages);
+  const stripped = stripDanglingAnthropicToolUses(messages, options);
 
   return validateTurnsWithConsecutiveMerge({
     messages: stripped,

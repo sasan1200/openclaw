@@ -141,6 +141,43 @@ describe("sanitizeToolCallIdsForCloudCodeAssist", () => {
       expect(aId.length).toBeLessThanOrEqual(40);
       expect(bId.length).toBeLessThanOrEqual(40);
     });
+
+    it("preserves the latest assistant turn verbatim when requested", () => {
+      const input = castAgentMessages([
+        {
+          role: "assistant",
+          content: [{ type: "toolCall", id: "call|older:1", name: "read", arguments: {} }],
+        },
+        {
+          role: "toolResult",
+          toolCallId: "call|older:1",
+          toolName: "read",
+          content: [{ type: "text", text: "ok" }],
+        },
+        {
+          role: "assistant",
+          content: [
+            { type: "redacted_thinking", data: "opaque" },
+            { type: "toolUse", id: "call|latest:1", name: "exec", input: {} },
+          ],
+        },
+      ]);
+
+      const out = sanitizeToolCallIdsForCloudCodeAssist(input, "strict", {
+        preserveLatestAssistantMessage: true,
+      });
+
+      const olderAssistant = out[0] as Extract<AgentMessage, { role: "assistant" }>;
+      expect((olderAssistant.content?.[0] as { id?: string } | undefined)?.id).toBe("callolder1");
+      expect(out[2]).toBe(input[2]);
+      expect(
+        (
+          (out[2] as Extract<AgentMessage, { role: "assistant" }>).content?.[1] as {
+            id?: string;
+          }
+        )?.id,
+      ).toBe("call|latest:1");
+    });
   });
 
   describe("strict mode (alphanumeric only)", () => {

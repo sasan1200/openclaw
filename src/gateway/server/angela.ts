@@ -16,11 +16,15 @@ export function createGatewayDelegatedTaskRequestHandler(params: {
         deps: params.deps,
         log: params.log,
         value: {
-          name: `Delegated Task ${task.task_id}`,
+          // The delegated HTTP boundary is generic across first-class agents.
+          name: `Delegated ${task.execution.runtime} Task ${task.task_id}`,
           message,
           agentId: targetAgentId,
           wakeMode: "now",
-          sessionKey: `angela:${task.task_id}`,
+          sessionKey:
+            task.execution.runtime === "subagent"
+              ? `delegated-subagent:${task.task_id}`
+              : `delegated-acpx:${task.task_id}`,
           deliver: false,
           channel: "last",
         },

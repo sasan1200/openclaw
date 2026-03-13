@@ -42,6 +42,30 @@ function createAcpEnabledConfig(home: string, storePath: string): OpenClawConfig
         models: { "openai/gpt-5.3-codex": {} },
         workspace: path.join(home, "openclaw"),
       },
+      list: [
+        {
+          id: "codex",
+          workspace: path.join(home, "openclaw"),
+          runtime: {
+            type: "acp",
+            acp: {
+              agent: "codex",
+              mode: "persistent",
+            },
+          },
+        },
+        {
+          id: "kimi",
+          workspace: path.join(home, "openclaw"),
+          runtime: {
+            type: "acp",
+            acp: {
+              agent: "kimi",
+              mode: "persistent",
+            },
+          },
+        },
+      ],
     },
     session: { store: storePath, mainKey: "main" },
   };
@@ -109,6 +133,7 @@ function resolveReadySession(
 }
 
 function mockAcpManager(params: {
+  initializeSession?: (params: unknown) => Promise<unknown>;
   runTurn: (params: unknown) => Promise<void>;
   resolveSession?: (params: {
     cfg: OpenClawConfig;
@@ -116,6 +141,11 @@ function mockAcpManager(params: {
   }) => ReturnType<ReturnType<typeof acpManagerModule.getAcpSessionManager>["resolveSession"]>;
 }) {
   getAcpSessionManagerSpy.mockReturnValue({
+    initializeSession:
+      params.initializeSession ??
+      (async () => {
+        throw new Error("initializeSession should not be called");
+      }),
     runTurn: params.runTurn,
     resolveSession:
       params.resolveSession ??
@@ -229,6 +259,177 @@ describe("agentCommand ACP runtime routing", () => {
         .mocked(runtime.log)
         .mock.calls.some(([first]) => typeof first === "string" && first.includes("ACP_OK"));
       expect(hasAckLog).toBe(true);
+    });
+  });
+
+  it("auto-initializes an ACP main session for agents configured with runtime.type=acp", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      fs.mkdirSync(path.dirname(storePath), { recursive: true });
+      fs.writeFileSync(storePath, JSON.stringify({}, null, 2));
+      const cfg = createAcpEnabledConfig(home, storePath);
+      if (cfg.agents?.list?.[0]?.runtime?.type === "acp") {
+        cfg.agents.list[0].runtime.acp = {
+          ...cfg.agents.list[0].runtime.acp,
+          backend: "custom-acpx",
+          cwd: "~/openclaw",
+        };
+      }
+      loadConfigSpy.mockReturnValue(cfg);
+
+      let initialized = false;
+      const initializeSession = vi.fn(async (paramsUnknown: unknown) => {
+        const params = paramsUnknown as {
+          sessionKey: string;
+          agent: string;
+          mode: string;
+          cwd?: string;
+        };
+        initialized = true;
+        const store = JSON.parse(fs.readFileSync(storePath, "utf8")) as Record<string, unknown>;
+        const nextEntry = {
+          sessionId: "acp-main-1",
+          updatedAt: Date.now(),
+          acp: {
+            backend: "acpx",
+            agent: params.agent,
+            runtimeSessionName: params.sessionKey,
+            mode: params.mode,
+            cwd: params.cwd,
+            state: "idle",
+            lastActivityAt: Date.now(),
+          },
+        };
+        store[params.sessionKey] = nextEntry;
+        fs.writeFileSync(storePath, JSON.stringify(store, null, 2));
+        return {
+          runtime: {},
+          handle: {
+            sessionKey: params.sessionKey,
+            backend: "acpx",
+            runtimeSessionName: params.sessionKey,
+            cwd: params.cwd,
+          },
+          meta: nextEntry.acp,
+        };
+      });
+      const runTurn = createRunTurnFromTextDeltas(["ACP_", "OK"]);
+
+      mockAcpManager({
+        initializeSession: (params: unknown) => initializeSession(params),
+        runTurn: (params: unknown) => runTurn(params),
+        resolveSession: ({ sessionKey }) =>
+          initialized ? resolveReadySession(sessionKey, "codex") : { kind: "none", sessionKey },
+      });
+
+      await agentCommand({ message: "ping", agentId: "codex" }, runtime);
+
+      expect(initializeSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionKey: "agent:codex:main",
+          agent: "codex",
+          backendId: "custom-acpx",
+          mode: "persistent",
+          cwd: path.join(home, "openclaw"),
+        }),
+      );
+      expect(runTurn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionKey: "agent:codex:main",
+          text: "ping",
+          mode: "prompt",
+        }),
+      );
+      expect(runEmbeddedPiAgentSpy).not.toHaveBeenCalled();
+
+      const persistedStore = JSON.parse(fs.readFileSync(storePath, "utf-8")) as Record<
+        string,
+        { sessionId?: string; acp?: { backend?: string; agent?: string } }
+      >;
+      expect(persistedStore["agent:codex:main"]).toMatchObject({
+        sessionId: "acp-main-1",
+        acp: {
+          backend: "acpx",
+          agent: "codex",
+        },
+      });
+    });
+  });
+
+  it("reuses an existing ACP main session for runtime.type=acp agents without reinitializing", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      fs.mkdirSync(path.dirname(storePath), { recursive: true });
+      fs.writeFileSync(
+        storePath,
+        JSON.stringify(
+          {
+            "agent:codex:main": {
+              sessionId: "acp-main-existing",
+              updatedAt: Date.now(),
+              acp: {
+                backend: "acpx",
+                agent: "codex",
+                runtimeSessionName: "agent:codex:main",
+                mode: "persistent",
+                state: "idle",
+                lastActivityAt: Date.now(),
+              },
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      mockConfig(home, storePath);
+
+      const runTurn = createRunTurnFromTextDeltas(["ACP_", "OK"]);
+      const initializeSession = vi.fn(async (_params: unknown) => ({}));
+      mockAcpManager({
+        initializeSession: (params: unknown) => initializeSession(params),
+        runTurn: (params: unknown) => runTurn(params),
+        resolveSession: ({ sessionKey }) => resolveReadySession(sessionKey, "codex"),
+      });
+
+      await agentCommand({ message: "ping", agentId: "codex" }, runtime);
+
+      expect(initializeSession).not.toHaveBeenCalled();
+      expect(runTurn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionKey: "agent:codex:main",
+          text: "ping",
+          mode: "prompt",
+        }),
+      );
+      expect(runEmbeddedPiAgentSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it("fails closed for runtime.type=acp agents when ACP dispatch is disabled", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      fs.mkdirSync(path.dirname(storePath), { recursive: true });
+      fs.writeFileSync(storePath, JSON.stringify({}, null, 2));
+      mockConfigWithAcpOverrides(home, storePath, {
+        dispatch: { enabled: false },
+      });
+
+      const initializeSession = vi.fn(async (_params: unknown) => ({}));
+      const runTurn = vi.fn(async (_params: unknown) => {});
+      mockAcpManager({
+        initializeSession: (params: unknown) => initializeSession(params),
+        runTurn: (params: unknown) => runTurn(params),
+        resolveSession: ({ sessionKey }) => ({ kind: "none", sessionKey }),
+      });
+
+      await expect(
+        agentCommand({ message: "ping", agentId: "codex" }, runtime),
+      ).rejects.toMatchObject({
+        code: "ACP_DISPATCH_DISABLED",
+      });
+      expect(initializeSession).not.toHaveBeenCalled();
+      expect(runTurn).not.toHaveBeenCalled();
+      expect(runEmbeddedPiAgentSpy).not.toHaveBeenCalled();
     });
   });
 

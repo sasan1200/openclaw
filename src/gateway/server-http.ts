@@ -660,7 +660,7 @@ export function createGatewayHttpServer(opts: {
           run: () => handleHooksRequest(req, res),
         },
         {
-          name: "angela-http",
+          name: "delegated-http",
           run: () =>
             handleDelegatedTaskRequest
               ? handleDelegatedTaskRequest(req, res)

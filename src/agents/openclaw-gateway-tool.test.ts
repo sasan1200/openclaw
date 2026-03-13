@@ -159,6 +159,75 @@ describe("gateway tool", () => {
     });
   });
 
+  it("passes agents.create through gateway call", async () => {
+    const { callGatewayTool } = await import("./tools/gateway.js");
+    const tool = requireGatewayTool();
+
+    await tool.execute("call6", {
+      action: "agents.create",
+      name: "Research",
+      workspace: "~/agents/research",
+      model: "openrouter/openai/gpt-5.3-chat",
+      avatar: "avatars/research.png",
+      emoji: "🔎",
+    });
+
+    expect(callGatewayTool).toHaveBeenCalledWith("agents.create", expect.any(Object), {
+      name: "Research",
+      workspace: "~/agents/research",
+      model: "openrouter/openai/gpt-5.3-chat",
+      avatar: "avatars/research.png",
+      emoji: "🔎",
+    });
+  });
+
+  it("passes agents.update through gateway call", async () => {
+    const { callGatewayTool } = await import("./tools/gateway.js");
+    const tool = requireGatewayTool();
+
+    await tool.execute("call7", {
+      action: "agents.update",
+      agentId: "research",
+      name: "Research Lead",
+      model: "openrouter/openai/gpt-5.3-codex",
+      emoji: "🧠",
+    });
+
+    expect(callGatewayTool).toHaveBeenCalledWith("agents.update", expect.any(Object), {
+      agentId: "research",
+      name: "Research Lead",
+      model: "openrouter/openai/gpt-5.3-codex",
+      emoji: "🧠",
+    });
+  });
+
+  it("requires workspace for agents.create", async () => {
+    const tool = requireGatewayTool();
+
+    await expect(
+      tool.execute("call-create-missing-workspace", {
+        action: "agents.create",
+        name: "Research",
+      }),
+    ).rejects.toThrow("workspace required");
+  });
+
+  it("passes agents.delete through gateway call", async () => {
+    const { callGatewayTool } = await import("./tools/gateway.js");
+    const tool = requireGatewayTool();
+
+    await tool.execute("call8", {
+      action: "agents.delete",
+      agentId: "research",
+      deleteFiles: false,
+    });
+
+    expect(callGatewayTool).toHaveBeenCalledWith("agents.delete", expect.any(Object), {
+      agentId: "research",
+      deleteFiles: false,
+    });
+  });
+
   it("passes update.run through gateway call", async () => {
     const { callGatewayTool } = await import("./tools/gateway.js");
     const sessionKey = "agent:main:whatsapp:dm:+15555550123";

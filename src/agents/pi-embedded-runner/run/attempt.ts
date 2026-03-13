@@ -121,7 +121,7 @@ import {
   buildEmbeddedSystemPrompt,
   createSystemPromptOverride,
 } from "../system-prompt.js";
-import { dropThinkingBlocks } from "../thinking.js";
+import { dropThinkingBlocks, latestAssistantMessageHasReplayProtectedBlocks } from "../thinking.js";
 import { collectAllowedToolNames } from "../tool-name-allowlist.js";
 import { installToolResultContextGuard } from "../tool-result-context-guard.js";
 import { splitSdkTools } from "../tool-split.js";
@@ -778,6 +778,28 @@ export function wrapStreamFnTrimToolCallNames(
       );
     }
     return wrapStreamTrimToolCallNames(maybeStream, allowedToolNames);
+  };
+}
+
+export function wrapStreamFnDropThinkingBlocks(baseFn: StreamFn): StreamFn {
+  return (model, context, options) => {
+    const ctx = context as unknown as { messages?: unknown };
+    const messages = ctx?.messages;
+    if (!Array.isArray(messages)) {
+      return baseFn(model, context, options);
+    }
+    const typedMessages = messages as unknown as AgentMessage[];
+    const sanitized = dropThinkingBlocks(typedMessages, {
+      preserveLatestAssistantMessage: latestAssistantMessageHasReplayProtectedBlocks(typedMessages),
+    }) as unknown;
+    if (sanitized === messages) {
+      return baseFn(model, context, options);
+    }
+    const nextContext = {
+      ...(context as unknown as Record<string, unknown>),
+      messages: sanitized,
+    } as unknown;
+    return baseFn(model, nextContext as typeof context, options);
   };
 }
 
@@ -1944,27 +1966,13 @@ export async function runEmbeddedAttempt(
         activeSession.agent.streamFn = cacheTrace.wrapStreamFn(activeSession.agent.streamFn);
       }
 
-      // Copilot/Claude can reject persisted `thinking` blocks (e.g. thinkingSignature:"reasoning_text")
-      // on *any* follow-up provider call (including tool continuations). Wrap the stream function
-      // so every outbound request sees sanitized messages.
+      // Copilot/Claude can reject persisted historical `thinking` blocks
+      // (e.g. thinkingSignature:"reasoning_text") on follow-up provider calls, but Anthropic
+      // now requires the latest assistant reasoning blocks to replay verbatim. Wrap the stream
+      // function so outbound requests keep the newest assistant turn intact while stripping older
+      // reasoning blocks.
       if (transcriptPolicy.dropThinkingBlocks) {
-        const inner = activeSession.agent.streamFn;
-        activeSession.agent.streamFn = (model, context, options) => {
-          const ctx = context as unknown as { messages?: unknown };
-          const messages = ctx?.messages;
-          if (!Array.isArray(messages)) {
-            return inner(model, context, options);
-          }
-          const sanitized = dropThinkingBlocks(messages as unknown as AgentMessage[]) as unknown;
-          if (sanitized === messages) {
-            return inner(model, context, options);
-          }
-          const nextContext = {
-            ...(context as unknown as Record<string, unknown>),
-            messages: sanitized,
-          } as unknown;
-          return inner(model, nextContext as typeof context, options);
-        };
+        activeSession.agent.streamFn = wrapStreamFnDropThinkingBlocks(activeSession.agent.streamFn);
       }
 
       // Mistral (and other strict providers) reject tool call IDs that don't match their
@@ -1981,7 +1989,15 @@ export async function runEmbeddedAttempt(
           if (!Array.isArray(messages)) {
             return inner(model, context, options);
           }
-          const sanitized = sanitizeToolCallIdsForCloudCodeAssist(messages as AgentMessage[], mode);
+          const sanitized = sanitizeToolCallIdsForCloudCodeAssist(
+            messages as AgentMessage[],
+            mode,
+            {
+              preserveLatestAssistantMessage: latestAssistantMessageHasReplayProtectedBlocks(
+                messages as AgentMessage[],
+              ),
+            },
+          );
           if (sanitized === messages) {
             return inner(model, context, options);
           }
@@ -2073,7 +2089,10 @@ export async function runEmbeddedAttempt(
           ? validateGeminiTurns(prior)
           : prior;
         const validated = transcriptPolicy.validateAnthropicTurns
-          ? validateAnthropicTurns(validatedGemini)
+          ? validateAnthropicTurns(validatedGemini, {
+              preserveLatestAssistantMessage:
+                latestAssistantMessageHasReplayProtectedBlocks(validatedGemini),
+            })
           : validatedGemini;
         const truncated = limitHistoryTurns(
           validated,
@@ -2082,8 +2101,12 @@ export async function runEmbeddedAttempt(
         // Re-run tool_use/tool_result pairing repair after truncation, since
         // limitHistoryTurns can orphan tool_result blocks by removing the
         // assistant message that contained the matching tool_use.
+        // Recompute replay-protection from post-truncation transcript.
         const limited = transcriptPolicy.repairToolUseResultPairing
-          ? sanitizeToolUseResultPairing(truncated)
+          ? sanitizeToolUseResultPairing(truncated, {
+              preserveLatestAssistantMessage:
+                latestAssistantMessageHasReplayProtectedBlocks(truncated),
+            })
           : truncated;
         cacheTrace?.recordStage("session:limited", { messages: limited });
         if (limited.length > 0) {

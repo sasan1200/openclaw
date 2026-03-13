@@ -37,6 +37,9 @@ const GATEWAY_ACTIONS = [
   "config.schema.lookup",
   "config.apply",
   "config.patch",
+  "agents.create",
+  "agents.update",
+  "agents.delete",
   "update.run",
 ] as const;
 
@@ -57,6 +60,14 @@ const GatewayToolSchema = Type.Object({
   // config.apply, config.patch
   raw: Type.Optional(Type.String()),
   baseHash: Type.Optional(Type.String()),
+  // agents.create, agents.update, agents.delete
+  agentId: Type.Optional(Type.String()),
+  name: Type.Optional(Type.String()),
+  workspace: Type.Optional(Type.String()),
+  model: Type.Optional(Type.String()),
+  avatar: Type.Optional(Type.String()),
+  emoji: Type.Optional(Type.String()),
+  deleteFiles: Type.Optional(Type.Boolean()),
   // config.apply, config.patch, update.run
   sessionKey: Type.Optional(Type.String()),
   note: Type.Optional(Type.String()),
@@ -76,7 +87,7 @@ export function createGatewayTool(opts?: {
     name: "gateway",
     ownerOnly: true,
     description:
-      "Restart, inspect a specific config schema path, apply config, or update the gateway in-place (SIGUSR1). Use config.schema.lookup with a targeted dot path before config edits. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Always pass a human-readable completion message via the `note` parameter so the system can deliver it to the user after restart.",
+      "Restart, inspect a specific config schema path, manage configured agents, apply config, or update the gateway in-place (SIGUSR1). Prefer agents.create, agents.update, and agents.delete for agent list changes instead of patching agents.list directly. Use config.schema.lookup with a targeted dot path before config edits. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing the entire config. Config writes may hot-reload or require restart depending on the changed paths. Always pass a human-readable completion message via the `note` parameter so the system can deliver it to the user after restart when needed.",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -203,6 +214,50 @@ export function createGatewayTool(opts?: {
           sessionKey,
           note,
           restartDelayMs,
+        });
+        return jsonResult({ ok: true, result });
+      }
+      if (action === "agents.create") {
+        const name = readStringParam(params, "name", { required: true, label: "name" });
+        const workspace = readStringParam(params, "workspace", {
+          required: true,
+          label: "workspace",
+        });
+        const model = readStringParam(params, "model");
+        const avatar = readStringParam(params, "avatar");
+        const emoji = readStringParam(params, "emoji");
+        const result = await callGatewayTool("agents.create", gatewayOpts, {
+          name,
+          workspace,
+          ...(model ? { model } : {}),
+          ...(avatar ? { avatar } : {}),
+          ...(emoji ? { emoji } : {}),
+        });
+        return jsonResult({ ok: true, result });
+      }
+      if (action === "agents.update") {
+        const agentId = readStringParam(params, "agentId", { required: true, label: "agentId" });
+        const name = readStringParam(params, "name");
+        const workspace = readStringParam(params, "workspace");
+        const model = readStringParam(params, "model");
+        const avatar = readStringParam(params, "avatar");
+        const emoji = readStringParam(params, "emoji");
+        const result = await callGatewayTool("agents.update", gatewayOpts, {
+          agentId,
+          ...(name ? { name } : {}),
+          ...(workspace ? { workspace } : {}),
+          ...(model ? { model } : {}),
+          ...(avatar ? { avatar } : {}),
+          ...(emoji ? { emoji } : {}),
+        });
+        return jsonResult({ ok: true, result });
+      }
+      if (action === "agents.delete") {
+        const agentId = readStringParam(params, "agentId", { required: true, label: "agentId" });
+        const deleteFiles = typeof params.deleteFiles === "boolean" ? params.deleteFiles : true;
+        const result = await callGatewayTool("agents.delete", gatewayOpts, {
+          agentId,
+          deleteFiles,
         });
         return jsonResult({ ok: true, result });
       }

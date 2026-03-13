@@ -9,6 +9,8 @@ const {
   triggerInternalHook,
   sanitizeSessionHistoryMock,
   contextEngineCompactMock,
+  validateAnthropicTurnsMock,
+  resolveTranscriptPolicyMock,
 } = vi.hoisted(() => ({
   hookRunner: {
     hasHooks: vi.fn(),
@@ -37,6 +39,12 @@ const {
     result: { summary: "engine-summary", tokensAfter: 50 } as
       | { summary: string; tokensAfter: number }
       | undefined,
+  })),
+  validateAnthropicTurnsMock: vi.fn((messages: unknown[]) => messages),
+  resolveTranscriptPolicyMock: vi.fn(() => ({
+    allowSyntheticToolResults: false,
+    validateGeminiTurns: false,
+    validateAnthropicTurns: false,
   })),
 }));
 
@@ -183,11 +191,7 @@ vi.mock("./tool-split.js", () => ({
 }));
 
 vi.mock("../transcript-policy.js", () => ({
-  resolveTranscriptPolicy: vi.fn(() => ({
-    allowSyntheticToolResults: false,
-    validateGeminiTurns: false,
-    validateAnthropicTurns: false,
-  })),
+  resolveTranscriptPolicy: resolveTranscriptPolicyMock,
 }));
 
 vi.mock("./extensions.js", () => ({
@@ -244,7 +248,7 @@ vi.mock("../../utils/message-channel.js", () => ({
 
 vi.mock("../pi-embedded-helpers.js", () => ({
   ensureSessionHeader: vi.fn(async () => {}),
-  validateAnthropicTurns: vi.fn((m: unknown[]) => m),
+  validateAnthropicTurns: validateAnthropicTurnsMock,
   validateGeminiTurns: vi.fn((m: unknown[]) => m),
 }));
 
@@ -283,6 +287,7 @@ vi.mock("./utils.js", () => ({
 import { getApiProvider, unregisterApiProviders } from "@mariozechner/pi-ai";
 import { getCustomApiRegistrySourceId } from "../custom-api-registry.js";
 import { compactEmbeddedPiSessionDirect, compactEmbeddedPiSession } from "./compact.js";
+import { log } from "./logger.js";
 
 const sessionHook = (action: string) =>
   triggerInternalHook.mock.calls.find(
@@ -290,6 +295,8 @@ const sessionHook = (action: string) =>
   )?.[0];
 
 describe("compactEmbeddedPiSessionDirect hooks", () => {
+  let embeddedLogWarn: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     ensureRuntimePluginsLoaded.mockReset();
     triggerInternalHook.mockClear();
@@ -314,6 +321,16 @@ describe("compactEmbeddedPiSessionDirect hooks", () => {
     sanitizeSessionHistoryMock.mockImplementation(async (params: { messages: unknown[] }) => {
       return params.messages;
     });
+    validateAnthropicTurnsMock.mockReset();
+    validateAnthropicTurnsMock.mockImplementation((messages: unknown[]) => messages);
+    resolveTranscriptPolicyMock.mockReset();
+    resolveTranscriptPolicyMock.mockReturnValue({
+      allowSyntheticToolResults: false,
+      validateGeminiTurns: false,
+      validateAnthropicTurns: false,
+    });
+    embeddedLogWarn?.mockRestore();
+    embeddedLogWarn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
     unregisterApiProviders(getCustomApiRegistrySourceId("ollama"));
   });
 
@@ -485,6 +502,89 @@ describe("compactEmbeddedPiSessionDirect hooks", () => {
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("ignores embedding-like compaction model overrides and falls back to the session model", async () => {
+    await compactEmbeddedPiSessionDirect({
+      sessionId: "session-1",
+      sessionKey: "agent:main:session-1",
+      sessionFile: "/tmp/session.jsonl",
+      workspaceDir: "/tmp",
+      provider: "anthropic",
+      model: "claude-opus-4-6",
+      config: {
+        agents: {
+          defaults: {
+            compaction: {
+              model: "ollama/nomic-embed-text",
+            },
+          },
+        },
+      } as never,
+    });
+
+    expect(resolveModelMock).toHaveBeenCalledWith(
+      "anthropic",
+      "claude-opus-4-6",
+      expect.any(String),
+      expect.objectContaining({
+        agents: {
+          defaults: {
+            compaction: {
+              model: "ollama/nomic-embed-text",
+            },
+          },
+        },
+      }),
+    );
+    expect(embeddedLogWarn).toHaveBeenCalledWith(
+      expect.stringContaining("ignoring embedding-like compaction model override"),
+    );
+  });
+
+  it("preserves the latest Anthropic replay-protected assistant turn during compaction validation", async () => {
+    resolveModelMock.mockReturnValue({
+      model: {
+        provider: "anthropic",
+        api: "anthropic-messages",
+        id: "claude-sonnet-4-6",
+        input: [],
+      },
+      error: null,
+      authStorage: { setRuntimeApiKey: vi.fn() },
+      modelRegistry: {},
+    });
+    resolveTranscriptPolicyMock.mockReturnValue({
+      allowSyntheticToolResults: false,
+      validateGeminiTurns: false,
+      validateAnthropicTurns: true,
+      repairToolUseResultPairing: false,
+    });
+    sanitizeSessionHistoryMock.mockResolvedValue([
+      { role: "user", content: "hello", timestamp: 1 },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "final" },
+          { type: "redacted_thinking", data: "opaque" },
+        ],
+        timestamp: 2,
+      },
+    ]);
+
+    await compactEmbeddedPiSessionDirect({
+      sessionId: "session-1",
+      sessionKey: "agent:main:session-1",
+      sessionFile: "/tmp/session.jsonl",
+      workspaceDir: "/tmp",
+    });
+
+    expect(validateAnthropicTurnsMock).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        preserveLatestAssistantMessage: true,
+      }),
+    );
   });
 });
 

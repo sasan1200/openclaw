@@ -25,5 +25,7 @@ openclaw agent --agent ops --message "Generate report" --deliver --reply-channel
 
 ## Notes
 
+- If the targeted agent is configured with `runtime.type=acp`, `openclaw agent --agent <id>` now auto-initializes or reuses that agent's main ACP session on first turn instead of falling back to embedded execution.
+- Use `openclaw agent --agent <id>` as the direct operator path for ACP-backed agents. Use `/acp spawn` when you want a separate ACP child session or a thread-bound ACP workflow instead of the agent's main session.
 - When this command triggers `models.json` regeneration, SecretRef-managed provider credentials are persisted as non-secret markers (for example env var names, `secretref-env:ENV_VAR_NAME`, or `secretref-managed`), not resolved secret plaintext.
 - Marker writes are source-authoritative: OpenClaw persists markers from the active source config snapshot, not from resolved runtime secret values.

@@ -312,6 +312,7 @@ process.exit(2);
 `;
 
 export async function createMockRuntimeFixture(params?: {
+  authPolicy?: ResolvedAcpxPluginConfig["authPolicy"];
   permissionMode?: ResolvedAcpxPluginConfig["permissionMode"];
   queueOwnerTtlSeconds?: number;
   mcpServers?: ResolvedAcpxPluginConfig["mcpServers"];
@@ -331,6 +332,7 @@ export async function createMockRuntimeFixture(params?: {
     stripProviderAuthEnvVars: false,
     installCommand: "n/a",
     cwd: dir,
+    authPolicy: params?.authPolicy ?? "skip",
     permissionMode: params?.permissionMode ?? "approve-all",
     nonInteractivePermissions: "fail",
     strictWindowsCmdWrapper: true,

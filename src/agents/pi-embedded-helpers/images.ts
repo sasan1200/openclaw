@@ -1,5 +1,6 @@
 import type { AgentMessage, AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ImageSanitizationLimits } from "../image-sanitization.js";
+import { findLatestAssistantMessageIndex } from "../pi-embedded-runner/thinking.js";
 import type { ToolCallIdMode } from "../tool-call-id.js";
 import { sanitizeToolCallIdsForCloudCodeAssist } from "../tool-call-id.js";
 import { sanitizeContentBlocksImages } from "../tool-images.js";
@@ -42,6 +43,7 @@ export async function sanitizeSessionMessagesImages(
      */
     toolCallIdMode?: ToolCallIdMode;
     preserveSignatures?: boolean;
+    preserveLatestAssistantMessage?: boolean;
     sanitizeThoughtSignatures?: {
       allowBase64Only?: boolean;
       includeCamelCase?: boolean;
@@ -57,11 +59,16 @@ export async function sanitizeSessionMessagesImages(
   const shouldSanitizeToolCallIds = options?.sanitizeToolCallIds === true;
   // We sanitize historical session messages because Anthropic can reject a request
   // if the transcript contains oversized base64 images (default max side 1200px).
+  const latestAssistantIndex = options?.preserveLatestAssistantMessage
+    ? findLatestAssistantMessageIndex(messages)
+    : -1;
   const sanitizedIds = shouldSanitizeToolCallIds
-    ? sanitizeToolCallIdsForCloudCodeAssist(messages, options.toolCallIdMode)
+    ? sanitizeToolCallIdsForCloudCodeAssist(messages, options.toolCallIdMode, {
+        preserveLatestAssistantMessage: options?.preserveLatestAssistantMessage,
+      })
     : messages;
   const out: AgentMessage[] = [];
-  for (const msg of sanitizedIds) {
+  for (const [index, msg] of sanitizedIds.entries()) {
     if (!msg || typeof msg !== "object") {
       out.push(msg);
       continue;
@@ -96,6 +103,10 @@ export async function sanitizeSessionMessagesImages(
 
     if (role === "assistant") {
       const assistantMsg = msg as Extract<AgentMessage, { role: "assistant" }>;
+      if (index === latestAssistantIndex) {
+        out.push(assistantMsg);
+        continue;
+      }
       if (assistantMsg.stopReason === "error") {
         const content = assistantMsg.content;
         if (Array.isArray(content)) {

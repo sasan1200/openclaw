@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { findLatestAssistantMessageIndex } from "./pi-embedded-runner/thinking.js";
 import { extractToolCallsFromAssistant, extractToolResultId } from "./tool-call-id.js";
 
 const TOOL_CALL_NAME_MAX_CHARS = 64;
@@ -193,6 +194,8 @@ export type ToolCallInputRepairReport = {
 
 export type ToolCallInputRepairOptions = {
   allowedToolNames?: Iterable<string>;
+  /** Skip rewriting the newest assistant turn when it has replay-protected blocks (thinking/redacted_thinking). */
+  preserveLatestAssistantMessage?: boolean;
 };
 
 export function stripToolResultDetails(messages: AgentMessage[]): AgentMessage[] {
@@ -224,14 +227,22 @@ export function repairToolCallInputs(
   let changed = false;
   const out: AgentMessage[] = [];
   const allowedToolNames = normalizeAllowedToolNames(options?.allowedToolNames);
+  const preserveLatest = options?.preserveLatestAssistantMessage ?? false;
+  const latestAssistantIndex = preserveLatest ? findLatestAssistantMessageIndex(messages) : -1;
 
-  for (const msg of messages) {
+  for (let msgIndex = 0; msgIndex < messages.length; msgIndex += 1) {
+    const msg = messages[msgIndex];
     if (!msg || typeof msg !== "object") {
       out.push(msg);
       continue;
     }
 
     if (msg.role !== "assistant" || !Array.isArray(msg.content)) {
+      out.push(msg);
+      continue;
+    }
+
+    if (preserveLatest && msgIndex === latestAssistantIndex) {
       out.push(msg);
       continue;
     }
@@ -327,8 +338,16 @@ export function sanitizeToolCallInputs(
   return repairToolCallInputs(messages, options).messages;
 }
 
-export function sanitizeToolUseResultPairing(messages: AgentMessage[]): AgentMessage[] {
-  return repairToolUseResultPairing(messages).messages;
+export type ToolUseRepairOptions = {
+  /** Skip repairing around the newest assistant turn when it has replay-protected blocks. */
+  preserveLatestAssistantMessage?: boolean;
+};
+
+export function sanitizeToolUseResultPairing(
+  messages: AgentMessage[],
+  options?: ToolUseRepairOptions,
+): AgentMessage[] {
+  return repairToolUseResultPairing(messages, options).messages;
 }
 
 export type ToolUseRepairReport = {
@@ -339,13 +358,19 @@ export type ToolUseRepairReport = {
   moved: boolean;
 };
 
-export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRepairReport {
+export function repairToolUseResultPairing(
+  messages: AgentMessage[],
+  options?: ToolUseRepairOptions,
+): ToolUseRepairReport {
   // Anthropic (and Cloud Code Assist) reject transcripts where assistant tool calls are not
   // immediately followed by matching tool results. Session files can end up with results
   // displaced (e.g. after user turns) or duplicated. Repair by:
   // - moving matching toolResult messages directly after their assistant toolCall turn
   // - inserting synthetic error toolResults for missing ids
   // - dropping duplicate toolResults for the same id (anywhere in the transcript)
+  const preserveLatest = options?.preserveLatestAssistantMessage ?? false;
+  const latestAssistantIndex = preserveLatest ? findLatestAssistantMessageIndex(messages) : -1;
+
   const out: AgentMessage[] = [];
   const added: Array<Extract<AgentMessage, { role: "toolResult" }>> = [];
   const seenToolResultIds = new Set<string>();
@@ -389,6 +414,29 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
     }
 
     const assistant = msg as Extract<AgentMessage, { role: "assistant" }>;
+
+    if (preserveLatest && i === latestAssistantIndex) {
+      out.push(msg);
+      // Collect immediately following toolResult messages that belong to this turn
+      let k = i + 1;
+      for (; k < messages.length; k += 1) {
+        const next = messages[k];
+        if (!next || typeof next !== "object") {
+          break;
+        }
+        if ((next as { role?: unknown }).role !== "toolResult") {
+          break;
+        }
+        const toolResult = next as Extract<AgentMessage, { role: "toolResult" }>;
+        const id = extractToolResultId(toolResult);
+        if (id) {
+          seenToolResultIds.add(id);
+        }
+        out.push(next);
+      }
+      i = k - 1;
+      continue;
+    }
 
     // Skip tool call extraction for aborted or errored assistant messages.
     // When stopReason is "error" or "aborted", the tool_use blocks may be incomplete

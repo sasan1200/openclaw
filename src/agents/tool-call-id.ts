@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { findLatestAssistantMessageIndex } from "./pi-embedded-runner/thinking.js";
 
 export type ToolCallIdMode = "strict" | "strict9";
 
@@ -216,6 +217,9 @@ function rewriteToolResultIds(params: {
 export function sanitizeToolCallIdsForCloudCodeAssist(
   messages: AgentMessage[],
   mode: ToolCallIdMode = "strict",
+  options?: {
+    preserveLatestAssistantMessage?: boolean;
+  },
 ): AgentMessage[] {
   // Strict mode: only [a-zA-Z0-9]
   // Strict9 mode: only [a-zA-Z0-9], length 9 (Mistral tool call requirement)
@@ -236,12 +240,18 @@ export function sanitizeToolCallIdsForCloudCodeAssist(
   };
 
   let changed = false;
-  const out = messages.map((msg) => {
+  const latestAssistantIndex = options?.preserveLatestAssistantMessage
+    ? findLatestAssistantMessageIndex(messages)
+    : -1;
+  const out = messages.map((msg, index) => {
     if (!msg || typeof msg !== "object") {
       return msg;
     }
     const role = (msg as { role?: unknown }).role;
     if (role === "assistant") {
+      if (index === latestAssistantIndex) {
+        return msg;
+      }
       const next = rewriteAssistantToolCallIds({
         message: msg as Extract<AgentMessage, { role: "assistant" }>,
         resolve,

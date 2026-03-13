@@ -1,4 +1,9 @@
 import { compileOperatorAgentRegistry } from "./agent-registry.js";
+import {
+  CANONICAL_DELEGATED_EXECUTION_TRANSPORT,
+  LEGACY_DELEGATED_EXECUTION_TRANSPORT,
+  isDelegatedExecutionTransport,
+} from "./contracts.js";
 
 function normalizeBaseUrl(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -58,6 +63,7 @@ export function resolveOperatorReceiptTemplate(): string | null {
 
 export type OperatorWorkerStatusSnapshot = {
   dispatchTransport: "2tony-http";
+  role: "legacy-worker-fleet";
   configured: boolean;
   baseUrl: string | null;
   receiptTemplate: string | null;
@@ -67,7 +73,9 @@ export type OperatorWorkerStatusSnapshot = {
 };
 
 export type OperatorDelegatedTransportStatusSnapshot = {
-  dispatchTransport: "angela-http";
+  dispatchTransport: typeof CANONICAL_DELEGATED_EXECUTION_TRANSPORT;
+  transportAliases: [typeof LEGACY_DELEGATED_EXECUTION_TRANSPORT];
+  role: "delegated-first-class-agent-boundary";
   configured: boolean;
   baseUrl: string | null;
   authScheme: "bearer" | null;
@@ -77,16 +85,39 @@ export type OperatorDelegatedTransportStatusSnapshot = {
   servedTeams: string[];
   leadAliases: string[];
   defaultAliasByTeam: Record<string, string>;
+  teamTopology: Array<{
+    teamId: string;
+    declaredTransport: string | null;
+    resolvedTransport: typeof CANONICAL_DELEGATED_EXECUTION_TRANSPORT;
+    leadAlias: string | null;
+    defaultAlias: string | null;
+    dispatchEndpointEnv: string | null;
+    dispatchPath: string | null;
+    dispatchAuthEnv: string | null;
+    resolvedBaseUrl: string | null;
+    resolvedEndpoint: string | null;
+    authConfigured: boolean;
+  }>;
+  legacyTeams: string[];
 };
 
 function resolveDelegatedTransportDomains(): Pick<
   OperatorDelegatedTransportStatusSnapshot,
-  "globalDefaultAlias" | "servedTeams" | "leadAliases" | "defaultAliasByTeam"
+  | "globalDefaultAlias"
+  | "servedTeams"
+  | "leadAliases"
+  | "defaultAliasByTeam"
+  | "teamTopology"
+  | "legacyTeams"
 > {
   const registry = compileOperatorAgentRegistry();
   const teams = registry.teams
-    .filter((team) => team.dispatchTransport === "angela-http")
+    .filter((team) => isDelegatedExecutionTransport(team.dispatchTransport))
     .toSorted((left, right) => left.id.localeCompare(right.id));
+  const legacyTeams = registry.teams
+    .filter((team) => team.dispatchTransport === "2tony-http")
+    .map((team) => team.id)
+    .toSorted((left, right) => left.localeCompare(right));
   const leadAliases = Array.from(
     new Set(teams.map((team) => team.lead?.trim()).filter((lead): lead is string => Boolean(lead))),
   ).toSorted((left, right) => left.localeCompare(right));
@@ -101,6 +132,33 @@ function resolveDelegatedTransportDomains(): Pick<
         )
         .map((team) => [team.id, team.dispatchDefaultAlias as string]),
     ),
+    teamTopology: teams.map((team) => {
+      const resolvedBaseUrl = normalizeBaseUrl(
+        (team.dispatchEndpointEnv ? process.env[team.dispatchEndpointEnv] : undefined) ??
+          resolveDelegatedTransportBaseUrl() ??
+          undefined,
+      );
+      const authValue =
+        (team.dispatchAuthEnv ? process.env[team.dispatchAuthEnv]?.trim() : null) ??
+        resolveDelegatedTransportSharedSecret();
+      const dispatchPath = (team.dispatchPath ?? "/api/message").startsWith("/")
+        ? (team.dispatchPath ?? "/api/message")
+        : `/${team.dispatchPath ?? "api/message"}`;
+      return {
+        teamId: team.id,
+        declaredTransport: team.dispatchTransport,
+        resolvedTransport: CANONICAL_DELEGATED_EXECUTION_TRANSPORT,
+        leadAlias: team.lead ?? null,
+        defaultAlias: team.dispatchDefaultAlias ?? null,
+        dispatchEndpointEnv: team.dispatchEndpointEnv ?? null,
+        dispatchPath,
+        dispatchAuthEnv: team.dispatchAuthEnv ?? null,
+        resolvedBaseUrl,
+        resolvedEndpoint: resolvedBaseUrl ? `${resolvedBaseUrl}${dispatchPath}` : null,
+        authConfigured: Boolean(authValue),
+      };
+    }),
+    legacyTeams,
   };
 }
 
@@ -109,6 +167,7 @@ export function getOperatorWorkerStatus(): OperatorWorkerStatusSnapshot {
   const sharedSecret = resolve2TonySharedSecret();
   return {
     dispatchTransport: "2tony-http",
+    role: "legacy-worker-fleet",
     configured: Boolean(baseUrl),
     baseUrl,
     receiptTemplate: resolveOperatorReceiptTemplate(),
@@ -123,7 +182,9 @@ export function getOperatorDelegatedTransportStatus(): OperatorDelegatedTranspor
   const sharedSecret = resolveDelegatedTransportSharedSecret();
   const domains = resolveDelegatedTransportDomains();
   return {
-    dispatchTransport: "angela-http",
+    dispatchTransport: CANONICAL_DELEGATED_EXECUTION_TRANSPORT,
+    transportAliases: [LEGACY_DELEGATED_EXECUTION_TRANSPORT],
+    role: "delegated-first-class-agent-boundary",
     configured: Boolean(baseUrl),
     baseUrl,
     authScheme: "bearer",
@@ -133,5 +194,7 @@ export function getOperatorDelegatedTransportStatus(): OperatorDelegatedTranspor
     servedTeams: domains.servedTeams,
     leadAliases: domains.leadAliases,
     defaultAliasByTeam: domains.defaultAliasByTeam,
+    teamTopology: domains.teamTopology,
+    legacyTeams: domains.legacyTeams,
   };
 }

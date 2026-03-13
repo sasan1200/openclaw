@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Repository Guidelines
 
 - Repo: https://github.com/openclaw/openclaw
@@ -40,10 +44,27 @@
 - If claim is unsubstantiated or likely hallucinated/BS: do not merge. Request evidence/changes, or close with `invalid` when appropriate.
 - If linked issue appears wrong/outdated, correct triage first; do not merge speculative fixes.
 
+## Architecture Overview
+
+The system is a personal AI gateway: messages arrive from messaging channels, get routed to an AI agent runner, and replies flow back. Key subsystems:
+
+- **Gateway** (`src/gateway/`): HTTP/WebSocket server (Hono-based). Entry: `server.impl.ts` → `startGatewayServer()`. Handles auth, channel connections, agent sessions, config reload, mission control UI, OpenAI-compatible API, and plugin lifecycle. Server methods live in `src/gateway/server-methods/`.
+- **Agent runner** (`src/agents/`): Wraps the Pi embedded agent SDK (`@mariozechner/pi-*`). Core path: `pi-embedded-runner.ts` → `runEmbeddedPiAgent()`. Handles model selection, tool registration, sandboxing, compaction, auth profile rotation, and streaming. Sub-agents spawn via `subagent-registry.ts` / `subagent-spawn.ts`.
+- **Channels** (`src/channels/`, `src/telegram/`, `src/discord/`, `src/slack/`, etc.): Each channel implements adapter interfaces from `src/plugin-sdk/` (`ChannelMessagingAdapter`, `ChannelPairingAdapter`, etc.). Core channels are built-in; additional channels live in `extensions/*` as workspace plugins.
+- **Plugin SDK** (`src/plugin-sdk/`): The public API surface for extensions. Exports channel adapter types, utility helpers, and core types. Extensions import from `openclaw/plugin-sdk` (resolved via jiti alias at runtime).
+- **Config** (`src/config/`): Schema lives in `schema.ts` + `zod-schema.*.ts`. Config is loaded from `openclaw.json` via `config.ts`. Types are split across `types.*.ts` files (agents, channels, models, gateway, etc.).
+- **Routing** (`src/routing/`): Maps inbound messages to the correct agent session via account bindings and session keys.
+- **Operator control** (`src/operator-control/`): Task dispatch to external workers (e.g., 2Tony), team routing, worker status, and operator status tracking.
+- **ACP** (`src/acp/`): Agent Communication Protocol — persistent bindings, session mapping, and translator for ACP-compatible clients.
+- **CLI** (`src/cli/`): Commander-based CLI wiring. Commands defined in `src/commands/`. Entry: `src/entry.ts` → `src/index.ts` → `src/cli/program.ts`.
+- **Native apps** (`apps/`): macOS (SwiftUI), iOS (SwiftUI + XcodeGen), Android (Kotlin). Communicate with the gateway over WebSocket using the protocol defined in `src/gateway/protocol/`.
+
+Data flow: Channel → inbound message → `src/channels/run-state-machine.ts` → agent runner → streaming reply → channel outbound adapter.
+
 ## Project Structure & Module Organization
 
 - Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
-- Tests: colocated `*.test.ts`.
+- Tests: colocated `*.test.ts`. Multiple vitest configs: `vitest.unit.config.ts` (fast unit), `vitest.gateway.config.ts` (gateway), `vitest.channels.config.ts`, `vitest.extensions.config.ts`, `vitest.e2e.config.ts`, `vitest.live.config.ts` (real API keys).
 - Docs: `docs/` (images, queue, Pi config). Built output lives in `dist/`.
 - Plugins/extensions: live under `extensions/*` (workspace packages). Keep plugin-only deps in the extension `package.json`; do not add them to the root `package.json` unless core uses them.
 - Plugins: install runs `npm install --omit=dev` in plugin dir; runtime deps must live in `dependencies`. Avoid `workspace:*` in `dependencies` (npm install breaks); put `openclaw` in `devDependencies` or `peerDependencies` instead (runtime resolves `openclaw/plugin-sdk` via jiti alias).
@@ -206,6 +227,7 @@
 - Signal: "update fly" => `fly ssh console -a flawd-bot -C "bash -lc 'cd /data/clawd/openclaw && git pull --rebase origin main'"` then `fly machines restart e825232f34d058 -a flawd-bot`.
 - When working on a GitHub Issue or PR, print the full URL at the end of the task.
 - When answering questions, respond with high-confidence answers only: verify in code; do not guess.
+- Do not make behavioral decisions, classify something as required vs optional, or propose a fix path unless you have read the relevant file or verified the exact source of truth directly. If you have not verified it, say that explicitly.
 - Never update the Carbon dependency.
 - Any dependency with `pnpm.patchedDependencies` must use an exact version (no `^`/`~`).
 - Patching dependencies (pnpm patches, overrides, or vendored changes) requires explicit approval; do not do this by default.
@@ -237,6 +259,7 @@
 - Lobster seam: use the shared CLI palette in `src/terminal/palette.ts` (no hardcoded colors); apply palette to onboarding/config prompts and other TTY UI output as needed.
 - **Multi-agent safety:** focus reports on your edits; avoid guard-rail disclaimers unless truly blocked; when multiple agents touch the same file, continue if safe; end with a brief “other files present” note only if relevant.
 - Bug investigations: read source code of relevant npm dependencies and all related local code before concluding; aim for high-confidence root cause.
+- Before recommending a config, manifest, or runtime change, inspect the concrete file or object that defines it. Do not infer missing structure or make source-of-truth assumptions from symptoms alone.
 - Code style: add brief comments for tricky logic; keep files under ~500 LOC when feasible (split/refactor as needed).
 - Tool schema guardrails (google-antigravity): avoid `Type.Union` in tool input schemas; no `anyOf`/`oneOf`/`allOf`. Use `stringEnum`/`optionalStringEnum` (Type.Unsafe enum) for string lists, and `Type.Optional(...)` instead of `... | null`. Keep top-level tool schema as `type: "object"` with `properties`.
 - Tool schema guardrails: avoid raw `format` property names in tool schemas; some validators treat `format` as a reserved keyword and reject the schema.

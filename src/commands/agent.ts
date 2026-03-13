@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { SessionManager } from "@mariozechner/pi-coding-agent";
 import { getAcpSessionManager } from "../acp/control-plane/manager.js";
 import { resolveAcpAgentPolicyError, resolveAcpDispatchPolicyError } from "../acp/policy.js";
-import { toAcpRuntimeError } from "../acp/runtime/errors.js";
+import { AcpRuntimeError, toAcpRuntimeError } from "../acp/runtime/errors.js";
 import { resolveAcpSessionCwd } from "../acp/runtime/session-identifiers.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 
@@ -11,6 +11,7 @@ import {
   listAgentIds,
   resolveAgentDir,
   resolveEffectiveModelFallbacks,
+  resolveAgentRuntimeConfig,
   resolveSessionAgentId,
   resolveAgentSkillsFilter,
   resolveAgentWorkspaceDir,
@@ -81,12 +82,13 @@ import {
 } from "../infra/agent-events.js";
 import { buildOutboundSessionContext } from "../infra/outbound/session-context.js";
 import { getRemoteSkillEligibility } from "../infra/skills-remote.js";
-import { normalizeAgentId } from "../routing/session-key.js";
+import { isAcpSessionKey, normalizeAgentId } from "../routing/session-key.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import { applyVerboseOverride } from "../sessions/level-overrides.js";
 import { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 import { resolveSendPolicy } from "../sessions/send-policy.js";
 import { emitSessionTranscriptUpdate } from "../sessions/transcript-events.js";
+import { resolveUserPath } from "../utils.js";
 import { resolveMessageChannel } from "../utils/message-channel.js";
 import { deliverAgentCommandResult } from "./agent/delivery.js";
 import { resolveAgentRunContext } from "./agent/run-context.js";
@@ -137,6 +139,29 @@ async function persistSessionEntry(params: PersistSessionEntryParams): Promise<v
     return merged;
   });
   params.sessionStore[params.sessionKey] = persisted;
+}
+
+function resolveAutoBootstrapAcpRuntime(params: {
+  cfg: ReturnType<typeof loadConfig>;
+  sessionAgentId: string;
+  sessionKey?: string;
+  workspaceDir: string;
+}) {
+  const runtimeConfig = resolveAgentRuntimeConfig(params.cfg, params.sessionAgentId);
+  if (runtimeConfig?.type !== "acp") {
+    return null;
+  }
+  if (params.sessionKey && isAcpSessionKey(params.sessionKey)) {
+    return null;
+  }
+  const configuredCwd = runtimeConfig.acp?.cwd?.trim();
+  const acpAgent = normalizeAgentId(runtimeConfig.acp?.agent || params.sessionAgentId);
+  return {
+    agent: acpAgent,
+    backendId: runtimeConfig.acp?.backend?.trim() || undefined,
+    cwd: configuredCwd ? resolveUserPath(configuredCwd) : params.workspaceDir,
+    mode: runtimeConfig.acp?.mode ?? "persistent",
+  };
 }
 
 function resolveFallbackRetryPrompt(params: { body: string; isFallbackRetry: boolean }): string {
@@ -601,13 +626,98 @@ async function prepareAgentCommandExecution(
     overrideSeconds: timeoutSecondsRaw,
   });
 
-  const sessionResolution = resolveSession({
+  let sessionResolution = resolveSession({
     cfg,
     to: opts.to,
     sessionId: opts.sessionId,
     sessionKey: opts.sessionKey,
     agentId: agentIdOverride,
   });
+
+  const sessionAgentId =
+    agentIdOverride ??
+    resolveSessionAgentId({
+      sessionKey: sessionResolution.sessionKey ?? opts.sessionKey?.trim(),
+      config: cfg,
+    });
+  // Internal callers (for example subagent spawns) may pin workspace inheritance.
+  const workspaceDirRaw =
+    normalizedSpawned.workspaceDir ?? resolveAgentWorkspaceDir(cfg, sessionAgentId);
+  const agentDir = resolveAgentDir(cfg, sessionAgentId);
+  const workspace = await ensureAgentWorkspace({
+    dir: workspaceDirRaw,
+    ensureBootstrapFiles: !agentCfg?.skipBootstrap,
+  });
+  const workspaceDir = workspace.dir;
+  const acpManager = getAcpSessionManager();
+  const autoBootstrapAcpRuntime = resolveAutoBootstrapAcpRuntime({
+    cfg,
+    sessionAgentId,
+    sessionKey: sessionResolution.sessionKey,
+    workspaceDir,
+  });
+
+  if (autoBootstrapAcpRuntime && !sessionResolution.sessionKey) {
+    sessionResolution = resolveSession({
+      cfg,
+      to: opts.to,
+      sessionId: opts.sessionId,
+      sessionKey: opts.sessionKey,
+      agentId: sessionAgentId,
+    });
+  }
+
+  let acpResolution = sessionResolution.sessionKey
+    ? acpManager.resolveSession({
+        cfg,
+        sessionKey: sessionResolution.sessionKey,
+      })
+    : null;
+
+  if (autoBootstrapAcpRuntime && sessionResolution.sessionKey && acpResolution?.kind === "none") {
+    const dispatchPolicyError = resolveAcpDispatchPolicyError(cfg);
+    if (dispatchPolicyError) {
+      throw dispatchPolicyError;
+    }
+    const agentPolicyError = resolveAcpAgentPolicyError(cfg, autoBootstrapAcpRuntime.agent);
+    if (agentPolicyError) {
+      throw agentPolicyError;
+    }
+
+    await acpManager.initializeSession({
+      cfg,
+      sessionKey: sessionResolution.sessionKey,
+      agent: autoBootstrapAcpRuntime.agent,
+      mode: autoBootstrapAcpRuntime.mode,
+      cwd: autoBootstrapAcpRuntime.cwd,
+      backendId: autoBootstrapAcpRuntime.backendId,
+    });
+
+    sessionResolution = resolveSession({
+      cfg,
+      to: opts.to,
+      sessionId: opts.sessionId,
+      sessionKey: sessionResolution.sessionKey,
+      agentId: sessionAgentId,
+    });
+    const initializedSessionKey = sessionResolution.sessionKey;
+    if (!initializedSessionKey) {
+      throw new AcpRuntimeError(
+        "ACP_SESSION_INIT_FAILED",
+        `ACP session initialization did not produce a session key for ${sessionAgentId}.`,
+      );
+    }
+    acpResolution = acpManager.resolveSession({
+      cfg,
+      sessionKey: initializedSessionKey,
+    });
+    if (acpResolution?.kind !== "ready") {
+      throw new AcpRuntimeError(
+        "ACP_SESSION_INIT_FAILED",
+        `ACP session initialization did not produce a ready session for ${initializedSessionKey}.`,
+      );
+    }
+  }
 
   const {
     sessionId,
@@ -619,34 +729,12 @@ async function prepareAgentCommandExecution(
     persistedThinking,
     persistedVerbose,
   } = sessionResolution;
-  const sessionAgentId =
-    agentIdOverride ??
-    resolveSessionAgentId({
-      sessionKey: sessionKey ?? opts.sessionKey?.trim(),
-      config: cfg,
-    });
   const outboundSession = buildOutboundSessionContext({
     cfg,
     agentId: sessionAgentId,
     sessionKey,
   });
-  // Internal callers (for example subagent spawns) may pin workspace inheritance.
-  const workspaceDirRaw =
-    normalizedSpawned.workspaceDir ?? resolveAgentWorkspaceDir(cfg, sessionAgentId);
-  const agentDir = resolveAgentDir(cfg, sessionAgentId);
-  const workspace = await ensureAgentWorkspace({
-    dir: workspaceDirRaw,
-    ensureBootstrapFiles: !agentCfg?.skipBootstrap,
-  });
-  const workspaceDir = workspace.dir;
   const runId = opts.runId?.trim() || sessionId;
-  const acpManager = getAcpSessionManager();
-  const acpResolution = sessionKey
-    ? acpManager.resolveSession({
-        cfg,
-        sessionKey,
-      })
-    : null;
 
   return {
     body,
@@ -1069,6 +1157,7 @@ async function agentCommandInternal(
         sessionId,
         sessionKey: sessionKey ?? sessionId,
         sessionEntry,
+        storePath,
         agentId: sessionAgentId,
         threadId: opts.threadId,
       });

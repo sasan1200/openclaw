@@ -22,6 +22,7 @@ Scope includes:
 - Tool call input validation
 - Tool result pairing repair
 - Turn validation / ordering
+- Latest-assistant replay preservation for reasoning blocks
 - Thought signature cleanup
 - Image payload sanitization
 - User-input provenance tagging (for inter-session routed prompts)
@@ -118,6 +119,16 @@ external end-user instructions.
 
 - Tool result pairing repair and synthetic tool results.
 - Turn validation (merge consecutive user turns to satisfy strict alternation).
+- If the newest assistant turn contains replay-protected reasoning blocks (`thinking` or `redacted_thinking`),
+  OpenClaw preserves that entire turn verbatim during image sanitization, tool-call id rewriting,
+  and Anthropic turn repair. Older replay-only reasoning blocks may still be stripped when the
+  provider policy requires it.
+
+**GitHub Copilot Claude**
+
+- Drop older persisted thinking blocks that Claude-on-Copilot rejects on replay.
+- Preserve the newest assistant turn verbatim when it carries replay-protected reasoning blocks,
+  so Anthropic-compatible follow-up requests do not mutate `thinking` / `redacted_thinking` content.
 
 **Mistral (including model-id based detection)**
 

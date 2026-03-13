@@ -13,6 +13,7 @@ import {
   resolveEffectiveModelFallbacks,
   resolveAgentModelFallbacksOverride,
   resolveAgentModelPrimary,
+  resolveAgentRuntimeConfig,
   resolveRunModelFallbacksOverride,
   resolveAgentWorkspaceDir,
   resolveAgentIdByWorkspacePath,
@@ -103,6 +104,34 @@ describe("resolveAgentConfig", () => {
     };
     expect(resolveAgentExplicitModelPrimary(cfgNoDefaults, "main")).toBeUndefined();
     expect(resolveAgentEffectiveModelPrimary(cfgNoDefaults, "main")).toBeUndefined();
+  });
+
+  it("returns per-agent runtime config when configured", () => {
+    const cfg: OpenClawConfig = {
+      agents: {
+        list: [
+          {
+            id: "codex",
+            runtime: {
+              type: "acp",
+              acp: {
+                agent: "codex",
+                mode: "persistent",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(resolveAgentRuntimeConfig(cfg, "codex")).toEqual({
+      type: "acp",
+      acp: {
+        agent: "codex",
+        mode: "persistent",
+      },
+    });
+    expect(resolveAgentRuntimeConfig(cfg, "main")).toBeUndefined();
   });
 
   it("supports per-agent model primary+fallbacks", () => {

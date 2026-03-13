@@ -107,12 +107,14 @@ type ResolvedAgentWorkspaceFilePath =
       requestPath: string;
       ioPath: string;
       workspaceReal: string;
+      viaSymlink: boolean;
     }
   | {
       kind: "missing";
       requestPath: string;
       ioPath: string;
       workspaceReal: string;
+      viaSymlink: false;
     }
   | {
       kind: "invalid";
@@ -138,6 +140,7 @@ function resolveNotFoundWorkspaceFilePathResult(params: {
       requestPath: params.requestPath,
       ioPath: params.ioPath,
       workspaceReal: params.workspaceReal,
+      viaSymlink: false,
     };
   }
   return { kind: "invalid", requestPath: params.requestPath, reason: "file not found" };
@@ -232,7 +235,7 @@ async function resolveAgentWorkspaceFilePath(params: {
     if (targetStat.nlink > 1) {
       return { kind: "invalid", requestPath, reason: "hardlinked file path not allowed" };
     }
-    return { kind: "ready", requestPath, ioPath: targetReal, workspaceReal };
+    return { kind: "ready", requestPath, ioPath: targetReal, workspaceReal, viaSymlink: true };
   }
 
   if (!candidateLstat.isFile()) {
@@ -243,7 +246,7 @@ async function resolveAgentWorkspaceFilePath(params: {
   }
 
   const targetReal = await fs.realpath(candidatePath).catch(() => candidatePath);
-  return { kind: "ready", requestPath, ioPath: targetReal, workspaceReal };
+  return { kind: "ready", requestPath, ioPath: targetReal, workspaceReal, viaSymlink: false };
 }
 
 async function statFileSafely(filePath: string): Promise<FileMeta | null> {
@@ -510,6 +513,7 @@ export const agentsHandlers: GatewayRequestHandlers = {
     }
 
     const workspaceDir = resolveUserPath(String(params.workspace ?? "").trim());
+    const model = resolveOptionalStringParam(params.model);
 
     // Resolve agentDir against the config we're about to persist (vs the pre-write config),
     // so subsequent resolutions can't disagree about the agent's directory.
@@ -517,6 +521,7 @@ export const agentsHandlers: GatewayRequestHandlers = {
       agentId,
       name: rawName,
       workspace: workspaceDir,
+      ...(model ? { model } : {}),
     });
     const agentDir = resolveAgentDir(nextConfig, agentId);
     nextConfig = applyAgentConfig(nextConfig, { agentId, agentDir });
@@ -564,6 +569,7 @@ export const agentsHandlers: GatewayRequestHandlers = {
         : undefined;
 
     const model = resolveOptionalStringParam(params.model);
+    const emoji = resolveOptionalStringParam(params.emoji);
     const avatar = resolveOptionalStringParam(params.avatar);
 
     const nextConfig = applyAgentConfig(cfg, {
@@ -582,11 +588,17 @@ export const agentsHandlers: GatewayRequestHandlers = {
       await ensureAgentWorkspace({ dir: workspaceDir, ensureBootstrapFiles: !skipBootstrap });
     }
 
-    if (avatar) {
+    if (emoji || avatar) {
       const workspace = workspaceDir ?? resolveAgentWorkspaceDir(nextConfig, agentId);
       await fs.mkdir(workspace, { recursive: true });
       const identityPath = path.join(workspace, DEFAULT_IDENTITY_FILENAME);
-      await fs.appendFile(identityPath, `\n- Avatar: ${sanitizeIdentityLine(avatar)}\n`, "utf-8");
+      const lines = [
+        "",
+        ...(emoji ? [`- Emoji: ${sanitizeIdentityLine(emoji)}`] : []),
+        ...(avatar ? [`- Avatar: ${sanitizeIdentityLine(avatar)}`] : []),
+        "",
+      ];
+      await fs.appendFile(identityPath, lines.join("\n"), "utf-8");
     }
 
     respond(true, { ok: true, agentId }, undefined);
@@ -729,6 +741,10 @@ export const agentsHandlers: GatewayRequestHandlers = {
       name,
     });
     if (!resolvedPath) {
+      return;
+    }
+    if (resolvedPath.viaSymlink) {
+      respondWorkspaceFileUnsafe(respond, name);
       return;
     }
     const content = String(params.content ?? "");

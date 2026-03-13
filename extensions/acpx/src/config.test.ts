@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,6 +9,15 @@ import {
 } from "./config.js";
 
 describe("acpx plugin config parsing", () => {
+  it("keeps the pinned runtime version aligned with the packaged acpx dependency", () => {
+    const packageJsonPath = path.resolve(import.meta.dirname, "..", "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+    };
+
+    expect(packageJson.dependencies?.acpx).toBe(ACPX_PINNED_VERSION);
+  });
+
   it("resolves bundled acpx with pinned version by default", () => {
     const resolved = resolveAcpxPluginConfig({
       rawConfig: {
@@ -21,6 +31,7 @@ describe("acpx plugin config parsing", () => {
     expect(resolved.allowPluginLocalInstall).toBe(true);
     expect(resolved.stripProviderAuthEnvVars).toBe(true);
     expect(resolved.cwd).toBe(path.resolve("/tmp/workspace"));
+    expect(resolved.authPolicy).toBe("skip");
     expect(resolved.strictWindowsCmdWrapper).toBe(true);
   });
 
@@ -125,6 +136,28 @@ describe("acpx plugin config parsing", () => {
     });
 
     expect(resolved.strictWindowsCmdWrapper).toBe(true);
+  });
+
+  it("accepts authPolicy override", () => {
+    const resolved = resolveAcpxPluginConfig({
+      rawConfig: {
+        authPolicy: "fail",
+      },
+      workspaceDir: "/tmp/workspace",
+    });
+
+    expect(resolved.authPolicy).toBe("fail");
+  });
+
+  it("rejects invalid authPolicy", () => {
+    expect(() =>
+      resolveAcpxPluginConfig({
+        rawConfig: {
+          authPolicy: "prompt",
+        },
+        workspaceDir: "/tmp/workspace",
+      }),
+    ).toThrow("authPolicy must be one of: skip, fail");
   });
 
   it("rejects non-boolean strictWindowsCmdWrapper", () => {

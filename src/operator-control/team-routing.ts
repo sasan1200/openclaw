@@ -4,7 +4,11 @@ import {
   type CompiledOperatorAgentRecord,
   type CompiledOperatorTeamRecord,
 } from "./agent-registry.js";
-import { taskEnvelopeSchema, type OperatorTaskEnvelope } from "./contracts.js";
+import {
+  canonicalizeOperatorExecutionTransport,
+  taskEnvelopeSchema,
+  type OperatorTaskEnvelope,
+} from "./contracts.js";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -101,6 +105,7 @@ export function resolveOperatorTaskEnvelope(input: unknown): OperatorTaskEnvelop
     },
     execution: {
       ...parsed.execution,
+      transport: canonicalizeOperatorExecutionTransport(parsed.execution.transport),
     },
   };
 
@@ -116,8 +121,9 @@ export function resolveOperatorTaskEnvelope(input: unknown): OperatorTaskEnvelop
   }
 
   if (!hasExplicitTransport(input) && team.dispatchTransport) {
-    next.execution.transport =
-      team.dispatchTransport as OperatorTaskEnvelope["execution"]["transport"];
+    next.execution.transport = canonicalizeOperatorExecutionTransport(
+      team.dispatchTransport as OperatorTaskEnvelope["execution"]["transport"],
+    );
   }
 
   return next;

@@ -36,6 +36,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+# ─── Python packages (persistent across container restarts) ──────────────────
+# requests — memory-autosync.py, API calls
+# openai   — LLM extraction in memory pipeline
+RUN pip3 install --break-system-packages requests openai
+
+# ─── Homebrew (Linuxbrew — skill installer, package management) ──────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    procps \
+    file \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+ENV NONINTERACTIVE=1
+RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+  || true
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+ENV HOMEBREW_NO_AUTO_UPDATE=1
+
 # ─── acpx CLI (ACP runtime bridge) ───────────────────────────────────────────
 ARG OPENCLAW_ACPX_VERSION=0.1.15
 RUN npm install -g "acpx@${OPENCLAW_ACPX_VERSION}" vercel \

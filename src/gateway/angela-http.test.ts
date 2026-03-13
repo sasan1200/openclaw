@@ -153,7 +153,8 @@ describe("delegated task request handler", () => {
       ok: true,
       status: "accepted",
       taskId: "task-angela-1",
-      runId: "run-angela-1",
+      runId: "run-angela-upstream-1",
+      delegatedRunId: "run-angela-1",
       agentId: "story-architect",
       callbackRegistered: true,
     });
@@ -171,6 +172,16 @@ describe("delegated task request handler", () => {
       owner: "story-architect",
       task_id: "task-angela-1",
       run_id: "run-angela-upstream-1",
+      delegated_run_id: "run-angela-1",
+      upstream_run_id: "run-angela-upstream-1",
+      output: {
+        delegatedRunId: "run-angela-1",
+        upstreamRunId: "run-angela-upstream-1",
+      },
+      metadata: {
+        delegatedRunId: "run-angela-1",
+        upstreamRunId: "run-angela-upstream-1",
+      },
     });
     const body1 = (fetchMock.mock.calls[1]?.[1] as RequestInit | undefined)?.body;
     expect(
@@ -181,7 +192,17 @@ describe("delegated task request handler", () => {
       owner: "story-architect",
       task_id: "task-angela-1",
       run_id: "run-angela-upstream-1",
+      delegated_run_id: "run-angela-1",
+      upstream_run_id: "run-angela-upstream-1",
       result_status: "SUCCESS",
+      output: {
+        delegatedRunId: "run-angela-1",
+        upstreamRunId: "run-angela-upstream-1",
+      },
+      metadata: {
+        delegatedRunId: "run-angela-1",
+        upstreamRunId: "run-angela-upstream-1",
+      },
     });
   });
 
@@ -314,7 +335,7 @@ describe("delegated task request handler", () => {
 
     expect(handled).toBe(true);
     expect(response.res.statusCode).toBe(400);
-    expect(response.getBody()).toContain("Unknown or unconfigured angela-http team");
+    expect(response.getBody()).toContain("Unknown or unconfigured delegated team");
   });
 
   it("rejects unauthenticated requests when the shared secret is configured", async () => {
@@ -329,6 +350,29 @@ describe("delegated task request handler", () => {
     await withEnvAsync(
       {
         OPENCLAW_ANGELA_SHARED_SECRET: "top-secret-angela",
+      },
+      async () => {
+        const handled = await handler(req, response.res);
+        expect(handled).toBe(true);
+      },
+    );
+
+    expect(response.res.statusCode).toBe(401);
+    expect(response.getBody()).toContain("Unauthorized");
+  });
+
+  it("rejects unauthenticated requests when only the operator delegated secret env is configured", async () => {
+    const handler = createDelegatedTaskRequestHandler({
+      log: { warn: vi.fn() },
+      runTask: vi.fn(() => "run-angela-operator-secret"),
+    });
+
+    const req = createRequest();
+    const response = createResponse();
+
+    await withEnvAsync(
+      {
+        OPENCLAW_OPERATOR_ANGELA_SHARED_SECRET: "top-secret-angela",
       },
       async () => {
         const handled = await handler(req, response.res);

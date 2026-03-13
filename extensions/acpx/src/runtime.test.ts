@@ -22,6 +22,7 @@ beforeAll(async () => {
       stripProviderAuthEnvVars: false,
       installCommand: "n/a",
       cwd: process.cwd(),
+      authPolicy: "skip",
       permissionMode: "approve-reads",
       nonInteractivePermissions: "fail",
       strictWindowsCmdWrapper: true,
@@ -152,6 +153,38 @@ describe("AcpxRuntime", () => {
     const resumeFlagIndex = resumeArgs.indexOf("--resume-session");
     expect(resumeFlagIndex).toBeGreaterThanOrEqual(0);
     expect(resumeArgs[resumeFlagIndex + 1]).toBe(resumeSessionId);
+  });
+
+  it("forwards authPolicy to control and prompt commands", async () => {
+    const { runtime, logPath } = await createMockRuntimeFixture({ authPolicy: "fail" });
+    const sessionKey = "agent:codex:acp:auth";
+    const handle = await runtime.ensureSession({
+      sessionKey,
+      agent: "codex",
+      mode: "persistent",
+    });
+
+    for await (const _event of runtime.runTurn({
+      handle,
+      text: "auth-check",
+      mode: "prompt",
+      requestId: "req-auth",
+    })) {
+      // Drain the runtime stream so the fixture captures final args.
+    }
+
+    const logs = await readMockRuntimeLogEntries(logPath);
+    const ensure = logs.find(
+      (entry) => entry.kind === "ensure" && String(entry.sessionName ?? "") === sessionKey,
+    );
+    const prompt = logs.find(
+      (entry) => entry.kind === "prompt" && String(entry.sessionName ?? "") === sessionKey,
+    );
+
+    expect((ensure?.args as string[]) ?? []).toContain("fail");
+    expect((prompt?.args as string[]) ?? []).toContain("fail");
+    expect((ensure?.args as string[]) ?? []).toContain("--auth-policy");
+    expect((prompt?.args as string[]) ?? []).toContain("--auth-policy");
   });
 
   it("serializes text plus image attachments into ACP prompt blocks", async () => {

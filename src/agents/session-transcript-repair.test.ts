@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
+import { limitHistoryTurns } from "./pi-embedded-runner/history.js";
 import {
   sanitizeToolCallInputs,
   sanitizeToolUseResultPairing,
@@ -205,6 +206,26 @@ describe("sanitizeToolUseResultPairing", () => {
     // Should add a synthetic tool result for the missing result
     expect(result.added).toHaveLength(1);
     expect(result.added[0]?.toolCallId).toBe("call_normal");
+  });
+
+  it("skips repair for latest assistant when preserveLatestAssistantMessage is true", () => {
+    const input = castAgentMessages([
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call_1", name: "read", arguments: {} }],
+        stopReason: "toolUse",
+      },
+      { role: "user", content: "user message" },
+    ]);
+
+    const result = repairToolUseResultPairing(input, {
+      preserveLatestAssistantMessage: true,
+    });
+
+    expect(result.added).toHaveLength(0);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]?.role).toBe("assistant");
+    expect(result.messages[1]?.role).toBe("user");
   });
 
   it("drops orphan tool results that follow an aborted assistant message", () => {
@@ -486,5 +507,169 @@ describe("stripToolResultDetails", () => {
 
     const out = stripToolResultDetails(input);
     expect(out).toBe(input);
+  });
+});
+
+describe("post-truncation pipeline: limitHistoryTurns + sanitizeToolUseResultPairing", () => {
+  it("preserves replay-protected latest assistant after truncation orphans earlier tool results", () => {
+    const replayProtectedContent = [
+      { type: "thinking", thinking: "deep thought", thinkingSignature: "sig" },
+      { type: "text", text: "final answer" },
+    ];
+
+    const input = castAgentMessages([
+      { role: "user", content: "old turn 1" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call_old", name: "exec", arguments: {} }],
+        stopReason: "toolUse",
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call_old",
+        toolName: "exec",
+        content: [{ type: "text", text: "old result" }],
+        isError: false,
+      },
+      { role: "user", content: "old turn 2" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call_mid", name: "read", arguments: {} }],
+        stopReason: "toolUse",
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call_mid",
+        toolName: "read",
+        content: [{ type: "text", text: "mid result" }],
+        isError: false,
+      },
+      { role: "user", content: "recent turn" },
+      { role: "assistant", content: replayProtectedContent },
+    ]);
+
+    // Truncate to 1 user turn — drops old turn 1 and old turn 2 (including their
+    // assistant + tool results), potentially orphaning tool results
+    const truncated = limitHistoryTurns(input, 1);
+
+    // Verify truncation kept only the most recent user turn and the last assistant
+    expect(truncated.length).toBeLessThan(input.length);
+    const lastAssistant = truncated.findLast((m) => m.role === "assistant");
+    expect(lastAssistant).toBeDefined();
+    expect(JSON.stringify(lastAssistant?.content)).toBe(JSON.stringify(replayProtectedContent));
+
+    // Run repair with replay protection
+    const repaired = sanitizeToolUseResultPairing(truncated, {
+      preserveLatestAssistantMessage: true,
+    });
+
+    // The latest assistant message must survive byte-for-byte
+    const finalAssistant = repaired.findLast((m) => m.role === "assistant");
+    expect(finalAssistant).toBeDefined();
+    expect(JSON.stringify(finalAssistant?.content)).toBe(JSON.stringify(replayProtectedContent));
+  });
+
+  it("still repairs orphan tool results after truncation even with preserve flag", () => {
+    const replayProtectedContent = [
+      { type: "thinking", thinking: "reasoning", thinkingSignature: "sig" },
+      { type: "text", text: "answer" },
+    ];
+
+    // Build a transcript where truncation will orphan a toolResult by removing its
+    // matching assistant turn, while the latest assistant has replay-protected blocks
+    const input = castAgentMessages([
+      { role: "user", content: "old" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call_orphan", name: "exec", arguments: {} }],
+        stopReason: "toolUse",
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call_orphan",
+        toolName: "exec",
+        content: [{ type: "text", text: "will be orphaned" }],
+        isError: false,
+      },
+      { role: "user", content: "new" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call_good", name: "read", arguments: {} }],
+        stopReason: "toolUse",
+      },
+      {
+        role: "toolResult",
+        toolCallId: "call_good",
+        toolName: "read",
+        content: [{ type: "text", text: "good result" }],
+        isError: false,
+      },
+      { role: "user", content: "final question" },
+      { role: "assistant", content: replayProtectedContent },
+    ]);
+
+    // Truncate to 2 user turns — drops the first user turn and its assistant/tool pair,
+    // but the toolResult for call_orphan might land in the truncated slice as an orphan
+    // depending on where the slice boundary falls
+    const truncated = limitHistoryTurns(input, 2);
+
+    const repaired = sanitizeToolUseResultPairing(truncated, {
+      preserveLatestAssistantMessage: true,
+    });
+
+    // No orphan toolResult should remain (any without a matching assistant are dropped)
+    for (let i = 0; i < repaired.length; i++) {
+      const msg = repaired[i];
+      if (msg.role === "toolResult") {
+        // Every toolResult must have a preceding assistant with a matching tool call
+        const precedingAssistant = repaired.slice(0, i).findLast((m) => m.role === "assistant");
+        expect(precedingAssistant).toBeDefined();
+      }
+    }
+
+    // The latest assistant is still intact
+    const finalAssistant = repaired.findLast((m) => m.role === "assistant");
+    expect(JSON.stringify(finalAssistant?.content)).toBe(JSON.stringify(replayProtectedContent));
+  });
+
+  it("preserves latest assistant tool calls + their results after truncation", () => {
+    const replayProtectedContent = [
+      { type: "thinking", thinking: "let me call a tool", thinkingSignature: "sig" },
+      { type: "toolCall", id: "call_latest", name: "exec", arguments: { cmd: "ls" } },
+      { type: "text", text: "calling tool" },
+    ];
+
+    const input = castAgentMessages([
+      { role: "user", content: "old" },
+      { role: "assistant", content: [{ type: "text", text: "old reply" }] },
+      { role: "user", content: "do something" },
+      { role: "assistant", content: replayProtectedContent, stopReason: "toolUse" },
+      {
+        role: "toolResult",
+        toolCallId: "call_latest",
+        toolName: "exec",
+        content: [{ type: "text", text: "result" }],
+        isError: false,
+      },
+    ]);
+
+    const truncated = limitHistoryTurns(input, 1);
+
+    const repaired = sanitizeToolUseResultPairing(truncated, {
+      preserveLatestAssistantMessage: true,
+    });
+
+    // Latest assistant's content must be preserved exactly
+    const finalAssistant = repaired.findLast((m) => m.role === "assistant");
+    expect(finalAssistant).toBeDefined();
+    expect(JSON.stringify(finalAssistant?.content)).toBe(JSON.stringify(replayProtectedContent));
+
+    // Its tool result must also be preserved
+    const toolResults = repaired.filter((m) => m.role === "toolResult");
+    expect(toolResults.length).toBeGreaterThanOrEqual(1);
+    const latestResult = toolResults.find(
+      (m) => (m as { toolCallId?: string }).toolCallId === "call_latest",
+    );
+    expect(latestResult).toBeDefined();
   });
 });

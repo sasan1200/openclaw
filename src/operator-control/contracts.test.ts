@@ -23,11 +23,30 @@ describe("operator-control contracts", () => {
     expect(envelope.schema).toBe("TaskEnvelopeV1");
     expect(envelope.tier).toBe("STANDARD");
     expect(envelope.execution).toEqual({
-      transport: "2tony-http",
+      transport: "delegated-http",
       runtime: "acpx",
       durable: true,
     });
     expect(envelope.context_refs).toEqual([]);
+  });
+
+  it("accepts the legacy angela-http transport alias for delegated execution", () => {
+    const envelope = taskEnvelopeSchema.parse({
+      task_id: "task-legacy-delegated-1",
+      idempotency_key: "idem-legacy-delegated-1",
+      requester: { id: "tonya" },
+      target: { capability: "marketing" },
+      objective: "Use the old delegated transport token",
+      acceptance_criteria: ["legacy alias remains valid"],
+      timeout_s: 600,
+      execution: {
+        transport: "angela-http",
+        runtime: "acpx",
+        durable: true,
+      },
+    });
+
+    expect(envelope.execution.transport).toBe("angela-http");
   });
 
   it("accepts versioned receipt, outcome, and validation payloads", () => {
@@ -66,6 +85,8 @@ describe("operator-control contracts", () => {
       schema: "AngelaTaskReceiptV1",
       task_id: "task-1",
       run_id: "run-1",
+      delegated_run_id: "delegated-run-1",
+      upstream_run_id: "run-1",
       state: "completed",
       attempt: 0,
       created_at: 1,
@@ -74,6 +95,8 @@ describe("operator-control contracts", () => {
     });
 
     expect(angelaReceipt.schema).toBe("AngelaTaskReceiptV1");
+    expect(angelaReceipt.delegated_run_id).toBe("delegated-run-1");
+    expect(angelaReceipt.upstream_run_id).toBe("run-1");
   });
 
   it("accepts Angela task envelopes", () => {
@@ -86,7 +109,7 @@ describe("operator-control contracts", () => {
       requester: { id: "tonya", kind: "operator" },
       acceptance_criteria: ["brief completed"],
       execution: {
-        transport: "angela-http",
+        transport: "delegated-http",
         runtime: "acpx",
         durable: true,
       },

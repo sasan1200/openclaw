@@ -59,7 +59,7 @@ describe("operator team routing", () => {
     });
   });
 
-  it("resolves marketing work to the Angela transport by default", async () => {
+  it("resolves marketing work to the delegated transport by default", async () => {
     await withStateDirEnv("operator-team-routing-angela-", async () => {
       const envelope = resolveOperatorTaskEnvelope({
         task_id: "task-team-5",
@@ -73,7 +73,7 @@ describe("operator team routing", () => {
 
       expect(envelope.target.team_id).toBe("marketing");
       expect(envelope.target.alias).toBe("tonys-angels");
-      expect(envelope.execution.transport).toBe("angela-http");
+      expect(envelope.execution.transport).toBe("delegated-http");
     });
   });
 
@@ -91,7 +91,7 @@ describe("operator team routing", () => {
 
       expect(envelope.target.team_id).toBe("engineering");
       expect(envelope.target.alias).toBe("bobby-digital");
-      expect(envelope.execution.transport).toBe("angela-http");
+      expect(envelope.execution.transport).toBe("delegated-http");
     });
   });
 
