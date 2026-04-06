@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resolveOpenClawAgentDir } from "../agents/agent-paths.js";
 import { AUTH_PROFILE_FILENAME } from "../agents/auth-profiles/constants.js";
+import { withEnvAsync } from "../test-utils/env.js";
 import { __testing as controlPlaneRateLimitTesting } from "./control-plane-rate-limit.js";
 import {
   connectOk,
@@ -329,6 +330,49 @@ describe("gateway config methods", () => {
 
     expect(patchRes.ok).toBe(true);
     expect(patchRes.payload?.noop).not.toBe(true);
+  });
+
+  it("does not noop config.patch when removing a persisted key that falls back from env", async () => {
+    await withEnvAsync({ ELEVENLABS_API_KEY: "env-elevenlabs-key" }, async () => {
+      const { writeConfigFile } = await import("../config/config.js");
+      await writeConfigFile({
+        talk: {
+          provider: "elevenlabs",
+          voiceId: "voice-123",
+          apiKey: "env-elevenlabs-key", // pragma: allowlist secret
+        },
+      });
+
+      const current = await rpcReq<{
+        hash?: string;
+      }>(requireWs(), "config.get", {});
+      expect(current.ok).toBe(true);
+      expect(typeof current.payload?.hash).toBe("string");
+
+      const patchRes = await rpcReq<{
+        ok?: boolean;
+        noop?: boolean;
+      }>(requireWs(), "config.patch", {
+        raw: JSON.stringify({
+          talk: {
+            apiKey: null,
+            providers: {
+              elevenlabs: {
+                apiKey: null,
+              },
+            },
+          },
+        }),
+        baseHash: current.payload?.hash,
+      });
+
+      expect(patchRes.ok).toBe(true);
+      expect(patchRes.payload?.noop).not.toBe(true);
+
+      const after = await rpcReq<{ hash?: string }>(requireWs(), "config.get", {});
+      expect(after.ok).toBe(true);
+      expect(after.payload?.hash).not.toBe(current.payload?.hash);
+    });
   });
 
   it("rejects config.patch when raw is null", async () => {
