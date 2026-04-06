@@ -59,7 +59,7 @@ export function createSubagentRegistryLifecycleController(params: {
   runs: Map<string, SubagentRunRecord>;
   resumedRuns: Set<string>;
   subagentAnnounceTimeoutMs: number;
-  persist(): void;
+  persist(opts?: { bumpGeneration?: boolean }): void;
   clearPendingLifecycleError(runId: string): void;
   countPendingDescendantRuns(rootSessionKey: string): number;
   suppressAnnounceForSteerRestart(entry?: SubagentRunRecord): boolean;
@@ -297,7 +297,7 @@ export function createSubagentRegistryLifecycleController(params: {
       changed = true;
     }
     if (changed) {
-      params.persist();
+      params.persist({ bumpGeneration: true });
     }
     return changed;
   };
@@ -415,7 +415,7 @@ export function createSubagentRegistryLifecycleController(params: {
       return false;
     }
     entry.cleanupHandled = true;
-    params.persist();
+    params.persist({ bumpGeneration: false });
     return true;
   };
 
@@ -452,7 +452,7 @@ export function createSubagentRegistryLifecycleController(params: {
             return;
           }
           current.cleanupHandled = false;
-          params.persist();
+          params.persist({ bumpGeneration: true });
         });
         continue;
       }
@@ -490,7 +490,7 @@ export function createSubagentRegistryLifecycleController(params: {
         workspaceDir: cleanupParams.entry.workspaceDir,
       });
       params.runs.delete(cleanupParams.runId);
-      params.persist();
+      params.persist({ bumpGeneration: true });
       retryDeferredCompletedAnnounces(cleanupParams.runId);
       return;
     }
@@ -501,7 +501,7 @@ export function createSubagentRegistryLifecycleController(params: {
       workspaceDir: cleanupParams.entry.workspaceDir,
     });
     cleanupParams.entry.cleanupCompletedAt = cleanupParams.completedAt;
-    params.persist();
+    params.persist({ bumpGeneration: true });
     retryDeferredCompletedAnnounces(cleanupParams.runId);
   };
 
@@ -593,7 +593,7 @@ export function createSubagentRegistryLifecycleController(params: {
       entry.wakeOnDescendantSettle = true;
       entry.cleanupHandled = false;
       params.resumedRuns.delete(runId);
-      params.persist();
+      params.persist({ bumpGeneration: true });
       scheduleResumeSubagentRun(runId, entry, deferredDecision.delayMs);
       return;
     }
@@ -638,7 +638,7 @@ export function createSubagentRegistryLifecycleController(params: {
     });
     entry.cleanupHandled = false;
     params.resumedRuns.delete(runId);
-    params.persist();
+    params.persist({ bumpGeneration: true });
     if (deferredDecision.resumeDelayMs == null) {
       return;
     }
@@ -710,7 +710,7 @@ export function createSubagentRegistryLifecycleController(params: {
           return;
         }
         current.cleanupHandled = false;
-        params.persist();
+        params.persist({ bumpGeneration: true });
       });
     };
 
@@ -778,6 +778,7 @@ export function createSubagentRegistryLifecycleController(params: {
     }
 
     let mutated = false;
+    let listVisibleMutated = false;
     if (
       completeParams.reason === SUBAGENT_ENDED_REASON_COMPLETE &&
       entry.suppressAnnounceReason === "killed" &&
@@ -795,6 +796,7 @@ export function createSubagentRegistryLifecycleController(params: {
     if (entry.endedAt !== endedAt) {
       entry.endedAt = endedAt;
       mutated = true;
+      listVisibleMutated = true;
     }
     const outcome = withSubagentOutcomeTiming(completeParams.outcome, {
       startedAt: entry.startedAt,
@@ -803,10 +805,12 @@ export function createSubagentRegistryLifecycleController(params: {
     if (shouldUpdateRunOutcome(entry.outcome, outcome)) {
       entry.outcome = outcome;
       mutated = true;
+      listVisibleMutated = true;
     }
     if (entry.endedReason !== completeParams.reason) {
       entry.endedReason = completeParams.reason;
       mutated = true;
+      listVisibleMutated = true;
     }
     if (entry.pauseReason !== undefined) {
       entry.pauseReason = undefined;
@@ -818,7 +822,7 @@ export function createSubagentRegistryLifecycleController(params: {
     }
 
     if (mutated) {
-      params.persist();
+      params.persist({ bumpGeneration: listVisibleMutated });
     }
     safeFinalizeSubagentTaskRun({
       entry,
