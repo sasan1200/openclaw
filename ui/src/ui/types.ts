@@ -5,6 +5,7 @@ import type {
   GatewayAgentRuntime,
   GatewayAgentRow as SharedGatewayAgentRow,
   SessionsListResultBase,
+  SessionsListRpcResultBase,
   SessionsPatchResultBase,
 } from "../../../src/shared/session-types.js";
 export type { ConfigUiHint, ConfigUiHints } from "../../../src/shared/config-ui-hints-types.js";
@@ -492,6 +493,12 @@ export type SessionsCompactionRestoreResult = {
     updatedAt: number;
   } & Record<string, unknown>;
 };
+
+/** `sessions.list` RPC: full row set or a short-circuit when rows match `lastHash`. */
+export type SessionsListRpcResult = SessionsListRpcResultBase<
+  GatewaySessionsDefaults,
+  GatewaySessionRow
+>;
 
 export type SessionsPatchResult = SessionsPatchResultBase<{
   sessionId: string;
