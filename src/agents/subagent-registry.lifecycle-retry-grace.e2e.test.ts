@@ -394,6 +394,15 @@ describe("subagent registry lifecycle error grace", () => {
     await waitForCleanupCompleted("run-terminal-error");
   });
 
+  it("bumps registry generation when registering a live run", () => {
+    const beforeGen = mod.getSubagentRegistryGeneration();
+
+    registerCompletionRun("run-generation-register", "generation-register", "generation register");
+
+    const afterGen = mod.getSubagentRegistryGeneration();
+    expect(afterGen).toBeGreaterThan(beforeGen);
+  });
+
   it("bumps registry generation when lifecycle end completion mutates run timing/status", async () => {
     registerCompletionRun("run-generation-end", "generation-end", "generation end test");
     setAssistantOutput("agent:main:subagent:generation-end", "done");
@@ -424,6 +433,16 @@ describe("subagent registry lifecycle error grace", () => {
     await flushAsync();
 
     await waitForAgentCallCount(1);
+    const afterGen = mod.getSubagentRegistryGeneration();
+    expect(afterGen).toBeGreaterThan(beforeGen);
+  });
+
+  it("bumps registry generation when releaseSubagentRun deletes a live run", () => {
+    registerCompletionRun("run-generation-release", "generation-release", "generation release");
+    const beforeGen = mod.getSubagentRegistryGeneration();
+
+    mod.releaseSubagentRun("run-generation-release");
+
     const afterGen = mod.getSubagentRegistryGeneration();
     expect(afterGen).toBeGreaterThan(beforeGen);
   });
