@@ -252,6 +252,8 @@ export type AppViewState = {
   agentSkillsAgentId: string | null;
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
+  sessionsListLastHash: string | null;
+  sessionsListLastHashParamsKey: string | null;
   sessionsError: string | null;
   threadsLoading: boolean;
   threadsResult: SessionsListResult | null;
