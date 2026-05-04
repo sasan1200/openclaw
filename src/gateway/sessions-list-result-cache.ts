@@ -15,14 +15,9 @@ import { getTranscriptWriteGeneration } from "../sessions/transcript-events.js";
 import { buildSessionsListParamsKey } from "../shared/session-types.js";
 import type { SessionsListParams } from "./protocol/index.js";
 import { collectCombinedSessionStoreStatFingerprint } from "./session-utils.js";
-import type { GatewaySessionsDefaults, SessionsListResult } from "./session-utils.types.js";
+import type { SessionsListResult } from "./session-utils.types.js";
 
-type CachedListPayload = {
-  path: string;
-  count: number;
-  defaults: GatewaySessionsDefaults;
-  sessions: SessionsListResult["sessions"];
-};
+type CachedListPayload = Omit<SessionsListResult, "ts">;
 
 export function getSessionsListResultCacheTtlMs(): number {
   return resolveCacheTtlMs({
@@ -137,6 +132,9 @@ export function writeSessionsListResultCache(params: {
   const payload: CachedListPayload = {
     path: params.result.path,
     count: params.result.count,
+    totalCount: params.result.totalCount,
+    limitApplied: params.result.limitApplied,
+    hasMore: params.result.hasMore,
     defaults: params.result.defaults,
     sessions: params.result.sessions,
   };

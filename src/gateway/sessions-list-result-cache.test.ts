@@ -66,6 +66,9 @@ describe("sessions list result cache immutability", () => {
               ts: 1_690_000_000_000,
               path: sessionsPath,
               count: 1,
+              totalCount: 3,
+              limitApplied: 1,
+              hasMore: true,
               defaults: {
                 modelProvider: null,
                 model: null,
@@ -91,6 +94,9 @@ describe("sessions list result cache immutability", () => {
           expect(second).toMatchObject({
             path: sessionsPath,
             count: 1,
+            totalCount: 3,
+            limitApplied: 1,
+            hasMore: true,
             defaults: {
               modelProvider: null,
               model: null,

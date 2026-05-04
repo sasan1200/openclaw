@@ -123,7 +123,10 @@ let loggedSlowSessionsListCatalog = false;
 
 const SESSIONS_LIST_MODEL_CATALOG_TIMEOUT_MS = 750;
 
-type SessionsListHashPayload = Pick<SessionsListResult, "path" | "count" | "defaults" | "sessions">;
+type SessionsListHashPayload = Pick<
+  SessionsListResult,
+  "path" | "count" | "totalCount" | "limitApplied" | "hasMore" | "defaults" | "sessions"
+>;
 
 function loadSessionsRuntimeModule(): Promise<SessionsRuntimeModule> {
   sessionsRuntimeModulePromise ??= import("./sessions.runtime.js");
@@ -479,6 +482,10 @@ function attachTrackedActiveSessionRuns<T extends SessionsListHashPayload>(param
 function hashSessionsListResult(result: SessionsListHashPayload): string {
   const serialized = JSON.stringify({
     path: result.path,
+    count: result.count,
+    totalCount: result.totalCount,
+    limitApplied: result.limitApplied,
+    hasMore: result.hasMore,
     sessions: result.sessions,
     defaults: result.defaults,
   });

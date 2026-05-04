@@ -7,6 +7,7 @@ import {
   getGatewayConfigModule,
   getSessionsHandlers,
   createDeferred,
+  directSessionReq,
   sessionStoreEntry,
 } from "./test/server-sessions.test-helpers.js";
 
@@ -202,6 +203,62 @@ test("sessions.list marks sessions with active abortable runs", async () => {
     }),
     undefined,
   );
+});
+
+test("sessions.list lastHash changes when limited result metadata changes", async () => {
+  await createSessionStoreDir();
+  const now = Date.now();
+  await writeSessionStore({
+    entries: {
+      newest: sessionStoreEntry("sess-newest", { updatedAt: now }),
+      older: sessionStoreEntry("sess-older", { updatedAt: now - 1_000 }),
+    },
+  });
+
+  type SessionsListPayload = {
+    hash?: string;
+    unchanged?: true;
+    count?: number;
+    totalCount?: number;
+    limitApplied?: number;
+    hasMore?: boolean;
+    sessions?: Array<{ key: string }>;
+  };
+
+  const first = await directSessionReq<SessionsListPayload>("sessions.list", { limit: 1 });
+  expect(first.ok).toBe(true);
+  expect(first.payload).toMatchObject({
+    count: 1,
+    totalCount: 2,
+    limitApplied: 1,
+    hasMore: true,
+    sessions: [expect.objectContaining({ key: "agent:main:newest" })],
+  });
+  expect(first.payload?.hash).toMatch(/^[0-9a-f]{16}$/);
+
+  await writeSessionStore({
+    entries: {
+      newest: sessionStoreEntry("sess-newest", { updatedAt: now }),
+      older: sessionStoreEntry("sess-older", { updatedAt: now - 1_000 }),
+      oldest: sessionStoreEntry("sess-oldest", { updatedAt: now - 2_000 }),
+    },
+  });
+
+  const second = await directSessionReq<SessionsListPayload>("sessions.list", {
+    limit: 1,
+    lastHash: first.payload?.hash,
+  });
+  expect(second.ok).toBe(true);
+  expect(second.payload?.unchanged).toBeUndefined();
+  expect(second.payload).toMatchObject({
+    count: 1,
+    totalCount: 3,
+    limitApplied: 1,
+    hasMore: true,
+    sessions: [expect.objectContaining({ key: "agent:main:newest" })],
+  });
+  expect(second.payload?.hash).toMatch(/^[0-9a-f]{16}$/);
+  expect(second.payload?.hash).not.toBe(first.payload?.hash);
 });
 
 test("sessions.list yields before responding during bulk transcript hydration", async () => {
