@@ -236,6 +236,17 @@ test("sessions.list lastHash changes when limited result metadata changes", asyn
   });
   expect(first.payload?.hash).toMatch(/^[0-9a-f]{16}$/);
 
+  const cached = await directSessionReq<SessionsListPayload>("sessions.list", { limit: 1 });
+  expect(cached.ok).toBe(true);
+  expect(cached.payload).toMatchObject({
+    count: 1,
+    totalCount: 2,
+    limitApplied: 1,
+    hasMore: true,
+    sessions: [expect.objectContaining({ key: "agent:main:newest" })],
+  });
+  expect(cached.payload?.hash).toBe(first.payload?.hash);
+
   await writeSessionStore({
     entries: {
       newest: sessionStoreEntry("sess-newest", { updatedAt: now }),
