@@ -163,6 +163,7 @@ export function execDockerRaw(
 }
 
 import { formatCliCommand } from "../../cli/command-format.js";
+import type { SandboxDockerVolumeSetting } from "../../config/types.sandbox.js";
 import { markOpenClawExecEnv } from "../../infra/openclaw-exec-env.js";
 import { defaultRuntime } from "../../runtime.js";
 import { computeSandboxConfigHash } from "./config-hash.js";
@@ -170,7 +171,10 @@ import { DEFAULT_SANDBOX_IMAGE } from "./constants.js";
 import { readRegistryEntry, updateRegistry } from "./registry.js";
 import { resolveSandboxAgentId, resolveSandboxScopeKey, slugifySessionKey } from "./shared.js";
 import type { SandboxConfig, SandboxDockerConfig, SandboxWorkspaceAccess } from "./types.js";
-import { validateSandboxSecurity } from "./validate-sandbox-security.js";
+import {
+  getReservedContainerTargetReason,
+  validateSandboxSecurity,
+} from "./validate-sandbox-security.js";
 import { appendWorkspaceMountArgs, SANDBOX_MOUNT_FORMAT_VERSION } from "./workspace-mounts.js";
 
 const log = createSubsystemLogger("docker");
@@ -370,6 +374,84 @@ function formatUlimitValue(
   return `${name}=${soft}:${hard}`;
 }
 
+function volumeSettingToBindSpec(volume: SandboxDockerVolumeSetting): string | null {
+  if (volume.strategy !== "bind") {
+    return null;
+  }
+  const source = normalizeDockerMountValue(volume.source, "source");
+  const target = normalizeDockerMountValue(volume.target, "target");
+  if (!source || !target) {
+    return null;
+  }
+  return `${source}:${target}:${volume.readOnly ? "ro" : "rw"}`;
+}
+
+function normalizeDockerMountValue(value: string | undefined, field: "source" | "target"): string {
+  const trimmed = value?.trim() ?? "";
+  if (trimmed.includes(",")) {
+    throw new Error(
+      `Sandbox security: docker volume ${field} must not contain "," because Docker --mount parses comma-separated key/value fields.`,
+    );
+  }
+  return trimmed;
+}
+
+export function appendVolumeMounts(args: string[], cfg: SandboxDockerConfig): void {
+  for (const volume of cfg.volumes ?? []) {
+    const target = normalizeDockerMountValue(volume.target, "target");
+    if (!target) {
+      continue;
+    }
+    if (volume.strategy === "ephemeral") {
+      args.push("--mount", `type=volume,target=${target}${volume.readOnly ? ",readonly" : ""}`);
+      continue;
+    }
+    if (volume.strategy === "named") {
+      const source = normalizeDockerMountValue(volume.source, "source");
+      if (!source) {
+        continue;
+      }
+      args.push(
+        "--mount",
+        `type=volume,source=${source},target=${target}${volume.readOnly ? ",readonly" : ""}`,
+      );
+      continue;
+    }
+    const source = normalizeDockerMountValue(volume.source, "source");
+    if (!source) {
+      continue;
+    }
+    args.push(
+      "--mount",
+      `type=bind,source=${source},target=${target}${volume.readOnly ? ",readonly" : ""}`,
+    );
+  }
+}
+
+function validateReservedVolumeTargets(params: {
+  volumes?: SandboxDockerVolumeSetting[];
+  allowReservedContainerTargets: boolean;
+}): void {
+  if (params.allowReservedContainerTargets || !params.volumes?.length) {
+    return;
+  }
+  for (const volume of params.volumes) {
+    const target = volume.target?.trim();
+    if (!target) {
+      continue;
+    }
+    const reason = getReservedContainerTargetReason(target);
+    if (!reason || reason.kind !== "reserved_target") {
+      continue;
+    }
+    throw new Error(
+      `Sandbox security: volume target "${target}" for strategy "${volume.strategy}" hits reserved container path "${reason.reservedPath}" ` +
+        `(resolved target: "${reason.targetPath}"). This can shadow OpenClaw sandbox mounts. ` +
+        "Use a dangerous override only when you fully trust this runtime.",
+    );
+  }
+}
+
 export function buildSandboxCreateArgs(params: {
   name: string;
   cfg: SandboxDockerConfig;
@@ -384,16 +466,28 @@ export function buildSandboxCreateArgs(params: {
   allowContainerNamespaceJoin?: boolean;
   envSanitizationOptions?: EnvSanitizationOptions;
 }) {
+  const allowReservedContainerTargets =
+    params.allowReservedContainerTargets ??
+    params.cfg.dangerouslyAllowReservedContainerTargets === true;
+
+  validateReservedVolumeTargets({
+    volumes: params.cfg.volumes,
+    allowReservedContainerTargets,
+  });
+
   // Runtime security validation: blocks dangerous bind mounts, network modes, and profiles.
+  const bindSpecsFromVolumes = (params.cfg.volumes ?? [])
+    .map((entry) => volumeSettingToBindSpec(entry))
+    .filter((entry): entry is string => typeof entry === "string");
+
   validateSandboxSecurity({
     ...params.cfg,
+    binds: [...(params.cfg.binds ?? []), ...bindSpecsFromVolumes],
     allowedSourceRoots: params.bindSourceRoots,
     allowSourcesOutsideAllowedRoots:
       params.allowSourcesOutsideAllowedRoots ??
       params.cfg.dangerouslyAllowExternalBindSources === true,
-    allowReservedContainerTargets:
-      params.allowReservedContainerTargets ??
-      params.cfg.dangerouslyAllowReservedContainerTargets === true,
+    allowReservedContainerTargets,
     dangerouslyAllowContainerNamespaceJoin:
       params.allowContainerNamespaceJoin ??
       params.cfg.dangerouslyAllowContainerNamespaceJoin === true,
@@ -525,6 +619,7 @@ async function createSandboxContainer(params: {
     workspaceAccess: params.workspaceAccess,
   });
   appendCustomBinds(args, cfg);
+  appendVolumeMounts(args, cfg);
   args.push(cfg.image, "sleep", "infinity");
 
   await execDocker(args);

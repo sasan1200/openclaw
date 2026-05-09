@@ -19,6 +19,10 @@ import {
 } from "./zod-schema.core.js";
 import { sensitive } from "./zod-schema.sensitive.js";
 
+function hasDockerMountFieldSeparator(value: string | undefined): boolean {
+  return value?.includes(",") === true;
+}
+
 export const HeartbeatSchema = z
   .object({
     every: z.string().optional(),
@@ -143,6 +147,18 @@ const SandboxDockerSchema = z
     dns: z.array(z.string()).optional(),
     extraHosts: z.array(z.string()).optional(),
     binds: z.array(z.string()).optional(),
+    volumes: z
+      .array(
+        z
+          .object({
+            source: z.string().optional(),
+            target: z.string(),
+            strategy: z.union([z.literal("ephemeral"), z.literal("named"), z.literal("bind")]),
+            readOnly: z.boolean().optional(),
+          })
+          .strict(),
+      )
+      .optional(),
     dangerouslyAllowReservedContainerTargets: z.boolean().optional(),
     dangerouslyAllowExternalBindSources: z.boolean().optional(),
     dangerouslyAllowContainerNamespaceJoin: z.boolean().optional(),
@@ -170,6 +186,65 @@ const SandboxDockerSchema = z
             message:
               `Sandbox security: bind mount "${bind}" uses a non-absolute source path "${source}". ` +
               "Only absolute POSIX or Windows drive-letter paths are supported for sandbox binds.",
+          });
+        }
+      }
+    }
+    if (data.volumes) {
+      for (let i = 0; i < data.volumes.length; i += 1) {
+        const vol = data.volumes[i];
+        const target = vol?.target?.trim() ?? "";
+        if (!target || !target.startsWith("/")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["volumes", i, "target"],
+            message: "Sandbox security: volume target must be an absolute POSIX path.",
+          });
+        } else if (hasDockerMountFieldSeparator(target)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["volumes", i, "target"],
+            message:
+              'Sandbox security: volume target must not contain "," because Docker --mount parses comma-separated key/value fields.',
+          });
+        }
+        const source = vol?.source?.trim();
+        if (vol.strategy === "bind") {
+          if (!source || !source.startsWith("/")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["volumes", i, "source"],
+              message:
+                "Sandbox security: bind volume strategy requires an absolute POSIX source path.",
+            });
+          } else if (hasDockerMountFieldSeparator(source)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["volumes", i, "source"],
+              message:
+                'Sandbox security: bind volume source must not contain "," because Docker --mount parses comma-separated key/value fields.',
+            });
+          }
+        } else if (vol.strategy === "named") {
+          if (!source) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["volumes", i, "source"],
+              message: "Sandbox config: named volume strategy requires source (volume name).",
+            });
+          } else if (hasDockerMountFieldSeparator(source)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["volumes", i, "source"],
+              message:
+                'Sandbox security: named volume source must not contain "," because Docker --mount parses comma-separated key/value fields.',
+            });
+          }
+        } else if (source) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["volumes", i, "source"],
+            message: "Sandbox config: ephemeral strategy must not set source.",
           });
         }
       }
