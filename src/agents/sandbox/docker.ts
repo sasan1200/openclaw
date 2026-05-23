@@ -356,6 +356,39 @@ export async function readDockerImageUser(image: string): Promise<string | undef
   return normalizeDockerUser(result.stdout);
 }
 
+function readDockerImageConfigStringArrayField(config: unknown, field: string): string[] {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return [];
+  }
+  const value = (config as Record<string, unknown>)[field];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+}
+
+export async function readDockerImageStartupCommand(image: string): Promise<string[]> {
+  const result = await execDocker(["image", "inspect", "-f", "{{json .Config}}", image], {
+    allowFailure: true,
+  });
+  if (result.code !== 0) {
+    const stderr = result.stderr.trim();
+    if (isDockerDaemonUnavailable(stderr)) {
+      throw new Error(formatDockerDaemonUnavailableError(stderr));
+    }
+    throw new Error(`Failed to inspect sandbox image startup command: ${stderr}`);
+  }
+  try {
+    const config: unknown = JSON.parse(result.stdout);
+    return [
+      ...readDockerImageConfigStringArrayField(config, "Entrypoint"),
+      ...readDockerImageConfigStringArrayField(config, "Cmd"),
+    ];
+  } catch (cause) {
+    throw new Error(`Failed to parse sandbox image startup command for ${image}.`, { cause });
+  }
+}
+
 export async function ensureDockerImage(image: string) {
   const imageState = await inspectDockerImage(image);
   if (imageState === "exists") {
@@ -395,7 +428,7 @@ function normalizeDockerUser(value?: string | null): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function isRootDockerUser(user: string | undefined): boolean {
+export function isRootDockerUser(user: string | undefined): boolean {
   if (!user) {
     return true;
   }
@@ -447,7 +480,7 @@ function shellSingleQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
-function getWritableDockerVolumeTargets(cfg: SandboxDockerConfig): string[] {
+export function getWritableDockerVolumeTargets(cfg: SandboxDockerConfig): string[] {
   const targets = new Set<string>();
   for (const volume of cfg.volumes ?? []) {
     if (volume.readOnly || volume.strategy === "bind") {
@@ -461,9 +494,16 @@ function getWritableDockerVolumeTargets(cfg: SandboxDockerConfig): string[] {
   return [...targets];
 }
 
-function buildVolumeOwnershipInitCommand(params: { user: string; targets: string[] }): string {
+export function buildVolumeOwnershipInitCommand(params: {
+  user: string;
+  targets: string[];
+  command?: string[];
+}): string {
   const targetArgs = params.targets.map(shellSingleQuote).join(" ");
   const user = shellSingleQuote(params.user);
+  const command = params.command?.length
+    ? params.command.map(shellSingleQuote).join(" ")
+    : "sleep infinity";
   return [
     "set -eu",
     "if ! command -v setpriv >/dev/null 2>&1; then echo 'OpenClaw sandbox volume setup requires setpriv in the sandbox image.' >&2; exit 126; fi",
@@ -475,7 +515,7 @@ function buildVolumeOwnershipInitCommand(params: { user: string; targets: string
     'case "$user_part" in ""|root) uid=0 ;; *[!0-9]*) uid="$(id -u "$user_part")" ;; *) uid="$user_part" ;; esac',
     'if [ -n "$group_part" ]; then case "$group_part" in root) gid=0 ;; *[!0-9]*) gid="$(getent group "$group_part" | cut -d: -f3)" ;; *) gid="$group_part" ;; esac; else gid="$(id -g "$user_part" 2>/dev/null || printf 0)"; fi',
     'for target do mkdir -p "$target"; chown "$uid:$gid" "$target"; done',
-    'exec setpriv --reuid "$uid" --regid "$gid" --clear-groups sleep infinity',
+    `exec setpriv --reuid "$uid" --regid "$gid" --clear-groups ${command}`,
   ].join("; ");
 }
 
@@ -692,9 +732,9 @@ async function createSandboxContainer(params: {
   appendCustomBinds(args, cfg);
   appendVolumeMounts(args, cfg);
   if (shouldInitializeVolumeOwnership && runtimeUser) {
+    args.push("--entrypoint", "/bin/sh");
     args.push(
       cfg.image,
-      "/bin/sh",
       "-lc",
       buildVolumeOwnershipInitCommand({
         user: runtimeUser,

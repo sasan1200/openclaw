@@ -206,6 +206,16 @@ describe("ensureSandboxBrowser create args", () => {
     dockerMocks.dockerContainerState.mockResolvedValue({ exists: false, running: false });
     dockerMocks.execDocker.mockImplementation(async (args: string[]) => {
       if (args[0] === "image" && args[1] === "inspect") {
+        if (args[3] === "{{.Config.User}}") {
+          return { stdout: "sandbox\n", stderr: "", code: 0 };
+        }
+        if (args[3] === "{{json .Config}}") {
+          return {
+            stdout: `${JSON.stringify({ Entrypoint: null, Cmd: ["openclaw-sandbox-browser"] })}\n`,
+            stderr: "",
+            code: 0,
+          };
+        }
         return { stdout: `${SANDBOX_BROWSER_IMAGE_CONTRACT_EPOCH}\n`, stderr: "", code: 0 };
       }
       return { stdout: "", stderr: "", code: 0 };
@@ -688,8 +698,8 @@ describe("ensureSandboxBrowser create args", () => {
   it("applies sandbox.docker.volumes to browser sandbox create args", async () => {
     const cfg = buildConfig(false);
     cfg.docker.volumes = [
-      { strategy: "named", source: "openclaw-cache", target: "/cache" },
-      { strategy: "ephemeral", target: "/tmp/browser-cache" },
+      { strategy: "named", source: "openclaw-cache", target: "/cache", readOnly: true },
+      { strategy: "ephemeral", target: "/tmp/browser-cache", readOnly: true },
     ];
 
     await ensureSandboxBrowser({
@@ -702,7 +712,44 @@ describe("ensureSandboxBrowser create args", () => {
     const createArgs = findDockerArgsCall(dockerMocks.execDocker.mock.calls, "create");
     const mountArgs = collectDockerFlagValues(createArgs ?? [], "--mount");
 
-    expect(mountArgs).toContain("type=volume,source=openclaw-cache,target=/cache");
-    expect(mountArgs).toContain("type=volume,target=/tmp/browser-cache");
+    expect(mountArgs).toContain("type=volume,source=openclaw-cache,target=/cache,readonly");
+    expect(mountArgs).toContain("type=volume,target=/tmp/browser-cache,readonly");
+  });
+
+  it("initializes writable browser volume ownership before dropping to the image command", async () => {
+    const cfg = buildConfig(false);
+    cfg.docker.volumes = [
+      { strategy: "named", source: "openclaw-cache", target: "/cache" },
+      { strategy: "ephemeral", target: "/tmp/browser-cache" },
+      { strategy: "bind", source: "/tmp/workspace/cache", target: "/bind-cache" },
+      { strategy: "named", source: "readonly-cache", target: "/readonly-cache", readOnly: true },
+    ];
+    dockerMocks.dockerContainerState
+      .mockResolvedValueOnce({ exists: false, running: false })
+      .mockResolvedValueOnce({ exists: true, running: true });
+
+    await ensureSandboxBrowser({
+      scopeKey: "session:test",
+      workspaceDir: "/tmp/workspace",
+      agentWorkspaceDir: "/tmp/workspace",
+      cfg,
+    });
+
+    const createArgs = requireDockerCreateArgs();
+    expect(collectDockerFlagValues(createArgs, "--user")).toEqual(["0:0"]);
+    expect(collectDockerFlagValues(createArgs, "--cap-add")).toEqual(["CHOWN", "SETUID", "SETGID"]);
+    expect(collectDockerFlagValues(createArgs, "--entrypoint")).toEqual(["/bin/sh"]);
+
+    const imageIndex = createArgs.indexOf("openclaw-sandbox-browser:bookworm-slim");
+    expect(imageIndex).toBeGreaterThan(0);
+    expect(createArgs[imageIndex + 1]).toBe("-lc");
+    const command = createArgs[imageIndex + 2] ?? "";
+    expect(command).toContain("setpriv");
+    expect(command).toContain("chown");
+    expect(command).toContain("/cache");
+    expect(command).toContain("/tmp/browser-cache");
+    expect(command).toContain("openclaw-sandbox-browser");
+    expect(command).not.toContain("/bind-cache");
+    expect(command).not.toContain("/readonly-cache");
   });
 });

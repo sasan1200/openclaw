@@ -28,14 +28,19 @@ import {
 } from "./constants.js";
 import {
   appendVolumeMounts,
+  buildVolumeOwnershipInitCommand,
   buildSandboxCreateArgs,
   dockerContainerState,
   execDocker,
   formatDockerDaemonUnavailableError,
+  getWritableDockerVolumeTargets,
+  isRootDockerUser,
   isDockerDaemonUnavailable,
+  readDockerImageStartupCommand,
   readDockerContainerEnvVar,
   readDockerContainerLabel,
   readDockerPort,
+  resolveDockerSandboxExecUser,
   resolveDockerEnvPolicyEpoch,
 } from "./docker.js";
 import {
@@ -317,6 +322,19 @@ export async function ensureSandboxBrowser(params: {
       allowContainerNamespaceJoin: browserDockerCfg.dangerouslyAllowContainerNamespaceJoin === true,
     });
     await ensureSandboxBrowserImage(browserImage);
+    const runtimeUser = await resolveDockerSandboxExecUser(browserDockerCfg);
+    const writableVolumeTargets = getWritableDockerVolumeTargets(browserDockerCfg);
+    const shouldInitializeVolumeOwnership =
+      writableVolumeTargets.length > 0 && !isRootDockerUser(runtimeUser);
+    const browserStartupCommand = shouldInitializeVolumeOwnership
+      ? await readDockerImageStartupCommand(browserImage)
+      : undefined;
+    if (shouldInitializeVolumeOwnership && browserStartupCommand?.length === 0) {
+      throw new Error(
+        `Sandbox browser image ${browserImage} has no startup command. ` +
+          "Writable anonymous and named Docker volumes require an image command so OpenClaw can initialize target ownership before dropping privileges.",
+      );
+    }
     const args = buildSandboxCreateArgs({
       name: containerName,
       cfg: browserDockerCfg,
@@ -328,6 +346,8 @@ export async function ensureSandboxBrowser(params: {
       configHash: expectedHash,
       includeBinds: false,
       bindSourceRoots: [params.workspaceDir, params.agentWorkspaceDir],
+      userOverride: shouldInitializeVolumeOwnership ? "0:0" : undefined,
+      capAdd: shouldInitializeVolumeOwnership ? ["CHOWN", "SETUID", "SETGID"] : undefined,
     });
     appendWorkspaceMountArgs({
       args,
@@ -363,9 +383,31 @@ export async function ensureSandboxBrowser(params: {
     if (noVncEnabled && noVncPassword) {
       args.push("-e", `${NOVNC_PASSWORD_ENV_KEY}=${noVncPassword}`);
     }
-    args.push(browserImage);
+    if (shouldInitializeVolumeOwnership && runtimeUser && browserStartupCommand) {
+      args.push("--entrypoint", "/bin/sh");
+      args.push(
+        browserImage,
+        "-lc",
+        buildVolumeOwnershipInitCommand({
+          user: runtimeUser,
+          targets: writableVolumeTargets,
+          command: browserStartupCommand,
+        }),
+      );
+    } else {
+      args.push(browserImage);
+    }
     await execDocker(args);
     await execDocker(["start", containerName]);
+    if (shouldInitializeVolumeOwnership) {
+      const startedState = await dockerContainerState(containerName);
+      if (!startedState.running) {
+        throw new Error(
+          `Sandbox browser container ${containerName} exited during Docker volume ownership setup. ` +
+            "Writable anonymous and named Docker volumes require setpriv plus CHOWN, SETUID, and SETGID capability support in the sandbox browser image.",
+        );
+      }
+    }
   } else if (!running) {
     await execDocker(["start", containerName]);
   }
